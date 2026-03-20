@@ -1,0 +1,26 @@
+export const Colors = {
+  primary: '#3b82f6',
+  primaryContainer: '#2563eb',
+  onPrimary: '#ffffff',
+  tertiary: '#10b981',
+  tertiaryFixed: '#6bff8f',
+  tertiaryContainer: '#064e3b',
+  secondary: '#a3a3a3',
+  secondaryContainer: '#171717',
+  surface: '#000000',
+  surfaceContainer: '#171717',
+  surfaceContainerLow: '#0a0a0a',
+  surfaceContainerHigh: '#262626',
+  surfaceContainerHighest: '#404040',
+  onSurface: '#ffffff',
+  onSurfaceVariant: '#a3a3a3',
+  background: '#000000',
+  outline: '#404040',
+  error: '#f87171',
+
+  // Meal colors
+  breakfast: '#f59e0b',
+  lunch: '#10b981',
+  dinner: '#a855f7',
+  snack: '#f97316',
+};
