@@ -104,8 +104,8 @@ function ShifaBadge({ value, size = 'normal' }: { value: number; size?: 'normal'
           <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
             Meal Shifa Index
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color, letterSpacing: -1 }}>{value}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color, letterSpacing: -1, marginRight: 6 }}>{value}</Text>
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color }}>{label}</Text>
           </View>
         </View>
@@ -126,7 +126,7 @@ function ShifaBadge({ value, size = 'normal' }: { value: number; size?: 'normal'
     return (
       <View style={{
         backgroundColor: bgColor, paddingHorizontal: 6, paddingVertical: 2,
-        borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 3,
+        borderRadius: 6, flexDirection: 'row', alignItems: 'center',
       }}>
         <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color, letterSpacing: 0.5 }}>
           SI {value}
@@ -138,7 +138,7 @@ function ShifaBadge({ value, size = 'normal' }: { value: number; size?: 'normal'
   return (
     <View style={{
       backgroundColor: bgColor, paddingHorizontal: 8, paddingVertical: 4,
-      borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4,
+      borderRadius: 8, flexDirection: 'row', alignItems: 'center',
     }}>
       <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color }}>
         SI {value}
@@ -434,10 +434,12 @@ export default function LogScreen() {
           onPress={() => setSearchModal(true)}
           style={{
             marginTop: 16, backgroundColor: Colors.primary, borderRadius: 14,
-            paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <ListIcon />
+          <View style={{ marginRight: 8 }}>
+            <ListIcon />
+          </View>
           <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 15 }}>Manual Entry</Text>
         </TouchableOpacity>
       </ScrollView>

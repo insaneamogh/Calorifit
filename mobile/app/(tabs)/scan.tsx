@@ -275,9 +275,9 @@ export default function ScanScreen() {
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.05)' }}>
             {scanning && (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 24, alignItems: 'center', gap: 12 }}>
+                <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 24, alignItems: 'center' }}>
                   <ActivityIndicator color={Colors.primary} size="large" />
-                  <Text style={{ color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 14 }}>Analyzing with AI...</Text>
+                  <Text style={{ color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 14, marginTop: 12 }}>Analyzing with AI...</Text>
                 </View>
               </View>
             )}
@@ -293,9 +293,9 @@ export default function ScanScreen() {
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.05)' }}>
             {scanning ? (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 24, alignItems: 'center', gap: 12 }}>
+                <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 24, alignItems: 'center' }}>
                   <ActivityIndicator color={Colors.primary} size="large" />
-                  <Text style={{ color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 14 }}>Identifying product...</Text>
+                  <Text style={{ color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 14, marginTop: 12 }}>Identifying product...</Text>
                 </View>
               </View>
             ) : !barcodeScanned ? (
@@ -381,13 +381,14 @@ export default function ScanScreen() {
               <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#fff', fontSize: 14 }}>Enter Barcode Manually</Text>
             </TouchableOpacity>
           ) : mode === 'camera' ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
               <TouchableOpacity
                 onPress={handlePickImage}
                 style={{
                   width: 48, height: 48, borderRadius: 24,
                   backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center',
                   borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+                  marginRight: 32,
                 }}
               >
                 <GalleryIcon />
@@ -448,7 +449,7 @@ export default function ScanScreen() {
           <View style={{ width: 36, height: 4, backgroundColor: '#2a2a2a', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
 
           {/* Meal selector */}
-          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', marginBottom: 20 }}>
             {['breakfast', 'lunch', 'dinner', 'snack'].map((m) => (
               <TouchableOpacity
                 key={m}
@@ -458,6 +459,7 @@ export default function ScanScreen() {
                   backgroundColor: selectedMeal === m ? Colors.primary : '#111',
                   alignItems: 'center',
                   borderWidth: 1, borderColor: selectedMeal === m ? Colors.primary : '#1a1a1a',
+                  marginRight: m !== 'snack' ? 6 : 0,
                 }}
               >
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: selectedMeal === m ? '#fff' : '#666', textTransform: 'capitalize' }}>
@@ -487,8 +489,8 @@ export default function ScanScreen() {
                     <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>
                       Meal Shifa Index
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                      <Text style={{ fontFamily: 'Inter_900Black', fontSize: 22, color, letterSpacing: -1 }}>{mealData.shifaIndex}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                      <Text style={{ fontFamily: 'Inter_900Black', fontSize: 22, color, letterSpacing: -1, marginRight: 4 }}>{mealData.shifaIndex}</Text>
                       <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color }}>{getShifaLabel(rating)}</Text>
                     </View>
                   </View>
@@ -510,9 +512,9 @@ export default function ScanScreen() {
                 <View key={i} style={{ backgroundColor: '#111', borderRadius: 14, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: '#1a1a1a' }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
+                      <View style={{ flexDirection: 'row', marginBottom: 6 }}>
                         {i === 0 && (
-                          <View style={{ backgroundColor: '#064e3b', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}>
+                          <View style={{ backgroundColor: '#064e3b', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 6 }}>
                             <Text style={{ color: '#34d399', fontFamily: 'Inter_700Bold', fontSize: 8, letterSpacing: 1.2 }}>
                               IDENTIFIED
                             </Text>
@@ -540,14 +542,15 @@ export default function ScanScreen() {
                       <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1.2 }}>KCAL</Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flexDirection: 'row' }}>
                     {[
                       { label: 'Protein', value: food.protein, color: '#f97316' },
                       { label: 'Carbs',   value: food.carbs,   color: Colors.tertiary },
                       { label: 'Fats',    value: food.fat,     color: '#ccc' },
-                    ].map((m) => (
+                    ].map((m, mIdx) => (
                       <View key={m.label} style={{
                         flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', padding: 10, borderRadius: 10, alignItems: 'center',
+                        marginRight: mIdx < 2 ? 8 : 0,
                       }}>
                         <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
                           {m.label}
@@ -557,9 +560,9 @@ export default function ScanScreen() {
                     ))}
                   </View>
                   {food.tags && food.tags.length > 0 && (
-                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                    <View style={{ flexDirection: 'row', marginTop: 10, flexWrap: 'wrap' }}>
                       {food.tags.map((tag: string) => (
-                        <View key={tag} style={{ backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16 }}>
+                        <View key={tag} style={{ backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, marginRight: 6, marginBottom: 6 }}>
                           <Text style={{ color: '#888', fontFamily: 'Inter_500Medium', fontSize: 11 }}>{tag}</Text>
                         </View>
                       ))}
@@ -570,13 +573,14 @@ export default function ScanScreen() {
             })}
           </ScrollView>
 
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', marginTop: 16 }}>
             <TouchableOpacity
               onPress={() => setResults(null)}
               style={{
                 flex: 1, paddingVertical: 16, borderRadius: 14,
                 backgroundColor: '#111', alignItems: 'center',
                 borderWidth: 1, borderColor: '#1a1a1a',
+                marginRight: 10,
               }}
             >
               <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#666', fontSize: 15 }}>Rescan</Text>
@@ -587,14 +591,16 @@ export default function ScanScreen() {
               style={{
                 flex: 2, paddingVertical: 16, borderRadius: 14,
                 backgroundColor: Colors.primary, alignItems: 'center',
-                flexDirection: 'row', justifyContent: 'center', gap: 8,
+                flexDirection: 'row', justifyContent: 'center',
               }}
             >
               {logging ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <CheckIcon />
+                  <View style={{ marginRight: 8 }}>
+                    <CheckIcon />
+                  </View>
                   <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Log This Meal</Text>
                 </>
               )}

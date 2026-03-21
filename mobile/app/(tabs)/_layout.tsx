@@ -113,6 +113,10 @@ export default function TabsLayout() {
       <Tabs.Screen name="scan" options={{ title: 'Scan' }} />
       <Tabs.Screen name="stats" options={{ title: 'Stats' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="milestones" options={{ href: null }} />
+      <Tabs.Screen name="coach" options={{ href: null }} />
+      <Tabs.Screen name="pantry" options={{ href: null }} />
+      <Tabs.Screen name="workout" options={{ href: null }} />
     </Tabs>
   );
 }

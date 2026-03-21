@@ -291,8 +291,8 @@ export default function Dashboard() {
                   <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
                     Daily Shifa Index
                   </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                    <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color, letterSpacing: -1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                    <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color, letterSpacing: -1, marginRight: 6 }}>
                       {dayShifa.shifaIndex}
                     </Text>
                     <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color }}>{label}</Text>
@@ -309,14 +309,14 @@ export default function Dashboard() {
                 </View>
               </View>
               {/* Per-meal breakdown */}
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+              <View style={{ flexDirection: 'row', marginTop: 14 }}>
                 {['breakfast', 'lunch', 'dinner', 'snack'].map((m) => {
                   const ms = todayLog?.mealShifa?.[m];
                   if (!ms || ms.shifaIndex <= 0) return null;
                   const mRating = getShifaRating(ms.shifaIndex);
                   const mColor = getShifaColor(mRating);
                   return (
-                    <View key={m} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 10, alignItems: 'center' }}>
+                    <View key={m} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 10, alignItems: 'center', marginRight: 8 }}>
                       <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
                         {m.slice(0, 4)}
                       </Text>
@@ -335,11 +335,13 @@ export default function Dashboard() {
           borderWidth: 1, borderColor: '#1a2a5a',
         }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <WaterDropIcon />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ marginRight: 12 }}>
+                <WaterDropIcon />
+              </View>
               <View>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 24, color: '#fff' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 24, color: '#fff', marginRight: 4 }}>
                     {waterConsumed.toFixed(1)}
                   </Text>
                   <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
@@ -351,8 +353,8 @@ export default function Dashboard() {
                 </Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-              <TouchableOpacity style={{ padding: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity style={{ padding: 6, marginRight: 8 }}>
                 <TrashIcon />
               </TouchableOpacity>
               <TouchableOpacity
@@ -360,7 +362,7 @@ export default function Dashboard() {
                 style={{
                   backgroundColor: 'rgba(59,130,246,0.2)', borderRadius: 10,
                   paddingHorizontal: 14, paddingVertical: 8,
-                  flexDirection: 'row', alignItems: 'center', gap: 4,
+                  flexDirection: 'row', alignItems: 'center',
                   borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)',
                 }}
               >
@@ -402,6 +404,97 @@ export default function Dashboard() {
                 <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: m.color }}>{m.value}g</Text>
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>{m.label}</Text>
               </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Quick Access */}
+        <View style={{ marginTop: 24 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 17, color: theme.text, letterSpacing: -0.3, marginBottom: 14 }}>
+            Quick Access
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {[
+              {
+                label: 'Workout Logger',
+                color: '#f97316',
+                bg: 'rgba(249,115,22,0.1)',
+                border: 'rgba(249,115,22,0.2)',
+                route: '/(tabs)/workout' as const,
+                icon: (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path d="M6 5v14M18 5v14" stroke="#f97316" strokeWidth={2} strokeLinecap="round" />
+                    <Path d="M3 8h3M18 8h3M3 16h3M18 16h3" stroke="#f97316" strokeWidth={2} strokeLinecap="round" />
+                    <Path d="M6 12h12" stroke="#f97316" strokeWidth={2} strokeLinecap="round" />
+                  </Svg>
+                ),
+              },
+              {
+                label: 'AI Coach',
+                color: Colors.primary,
+                bg: 'rgba(59,130,246,0.1)',
+                border: 'rgba(59,130,246,0.2)',
+                route: '/(tabs)/coach' as const,
+                icon: (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                ),
+              },
+              {
+                label: 'Pantry',
+                color: '#10b981',
+                bg: 'rgba(16,185,129,0.1)',
+                border: 'rgba(16,185,129,0.2)',
+                route: '/(tabs)/pantry' as const,
+                icon: (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path d="M17 8C8 10 5.9 16.17 3.82 19.34a1 1 0 001.64 1.16C7 19 9 17 12 16c-1.5 2-2 4-2 4s3-2 5-5c1.5 2 1.5 4 1.5 4s2-3 2-7c0-3.5-1.5-4.5-1.5-4.5z" stroke="#10b981" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                ),
+              },
+              {
+                label: 'Milestones',
+                color: '#f59e0b',
+                bg: 'rgba(245,158,11,0.1)',
+                border: 'rgba(245,158,11,0.2)',
+                route: '/(tabs)/milestones' as const,
+                icon: (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path d="M6 9H4.5a2.5 2.5 0 010-5H6" stroke="#f59e0b" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M18 9h1.5a2.5 2.5 0 000-5H18" stroke="#f59e0b" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M4 22h16" stroke="#f59e0b" strokeWidth={1.8} strokeLinecap="round" />
+                    <Path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" stroke="#f59e0b" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" stroke="#f59e0b" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M18 2H6v7a6 6 0 0012 0V2z" stroke="#f59e0b" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                ),
+              },
+            ].map((card, idx) => (
+              <TouchableOpacity
+                key={card.label}
+                onPress={() => router.push(card.route)}
+                activeOpacity={0.7}
+                style={{
+                  width: '47%',
+                  backgroundColor: card.bg,
+                  borderRadius: 16, padding: 18,
+                  borderWidth: 1, borderColor: card.border,
+                  marginRight: idx % 2 === 0 ? '6%' : 0,
+                  marginBottom: 12,
+                }}
+              >
+                <View style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  backgroundColor: `${card.color}18`,
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+                }}>
+                  {card.icon}
+                </View>
+                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: theme.text }}>
+                  {card.label}
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>

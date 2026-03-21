@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+import { router } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { userAPI, progressAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
@@ -369,6 +370,54 @@ export default function ProfileScreen() {
               <View style={{ height: 4, backgroundColor: Colors.tertiary, borderRadius: 2, width: '70%' }} />
             </View>
           </TouchableOpacity>
+        </View>
+
+        {/* Explore Section */}
+        <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
+            Explore
+          </Text>
+          <View style={{ backgroundColor: theme.surface, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+            {[
+              {
+                label: 'Milestones & Rewards',
+                desc: 'Track XP, streaks and trophies',
+                onPress: () => router.push('/(tabs)/milestones'),
+              },
+              {
+                label: 'Vitality AI Coach',
+                desc: 'Personalized nutrition guidance',
+                onPress: () => router.push('/(tabs)/coach'),
+              },
+              {
+                label: 'Shopping & Pantry',
+                desc: 'Manage your food inventory',
+                onPress: () => router.push('/(tabs)/pantry'),
+              },
+              {
+                label: 'Workout Logger',
+                desc: 'Log exercises and track performance',
+                onPress: () => router.push('/(tabs)/workout'),
+              },
+            ].map((item, i) => (
+              <TouchableOpacity
+                key={item.label}
+                onPress={item.onPress}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', padding: 16,
+                  borderBottomWidth: i < 3 ? 1 : 0, borderBottomColor: theme.border,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.text, fontSize: 14 }}>{item.label}</Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12, marginTop: 2 }}>{item.desc}</Text>
+                </View>
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path d="M9 18l6-6-6-6" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Account Settings */}
