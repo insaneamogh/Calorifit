@@ -12,7 +12,8 @@
       "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "newArchEnabled": true
     },
     "android": {
       "adaptiveIcon": {
@@ -21,12 +22,12 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "newArchEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "newArchEnabled": false,
     "plugins": [
       "expo-router",
       "expo-font",
