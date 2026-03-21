@@ -27,14 +27,16 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const dailyCalGoal = calculateTDEE({
-      gender: gender || 'other',
-      age: age || 25,
-      heightCm: heightCm || 170,
-      weightKg: currentWeight || 70,
-      activityLevel: activityLevel || 'moderately_active',
-      goal: goal || 'maintain',
-    });
+    const dailyCalGoal = req.body.dailyCalGoal
+      ? Number(req.body.dailyCalGoal)
+      : calculateTDEE({
+          gender: gender || 'other',
+          age: age || 25,
+          heightCm: heightCm || 170,
+          weightKg: currentWeight || 70,
+          activityLevel: activityLevel || 'moderately_active',
+          goal: goal || 'maintain',
+        });
 
     const macros = calculateMacros(dailyCalGoal, goal || 'maintain');
 
