@@ -44,6 +44,8 @@ model Food {
   fat         Float
   fiber       Float   @default(0)
   sugar       Float   @default(0)
+  glycemicIndex Int?  // Estimated or fetched GI (0-100)
+  shifaIndex  Int?    // Computed: (cal * GI) / (protein + fiber) per 100g
   isCustom    Boolean @default(false)
   createdBy   String?
   tags        String[] @default([])
@@ -72,6 +74,9 @@ model FoodLogItem {
   protein    Float
   carbs      Float
   fat        Float
+  fiber      Float    @default(0)
+  gi         Int      @default(0)   // Glycemic Index of this food
+  shifaIndex Int      @default(0)   // Item-level Shifa Index
   photoUrl   String?
   aiDetected Boolean  @default(false)
   createdAt  DateTime @default(now())

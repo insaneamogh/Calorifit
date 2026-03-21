@@ -4,19 +4,147 @@ import {
   Alert, ActivityIndicator, Modal, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { logsAPI, foodsAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
+import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
 const today = () => new Date().toISOString().split('T')[0];
 
-const MEAL_META: Record<string, { icon: string; color: string; label: string }> = {
-  breakfast: { icon: '☀️', color: '#f59e0b', label: 'Breakfast' },
-  lunch:     { icon: '🍽', color: '#10b981', label: 'Lunch'     },
-  dinner:    { icon: '🌙', color: '#a855f7', label: 'Dinner'    },
-  snack:     { icon: '🍪', color: '#f97316', label: 'Snacks'    },
+const SERVING_UNITS = [
+  { label: '100g', grams: 100 },
+  { label: '1 bowl', grams: 250 },
+  { label: '1 cup', grams: 240 },
+  { label: '1 spoon', grams: 15 },
+];
+
+const MEAL_LABELS: Record<string, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Snacks',
 };
+
+const MEAL_COLORS: Record<string, string> = {
+  breakfast: '#f59e0b',
+  lunch: '#10b981',
+  dinner: '#a855f7',
+  snack: '#f97316',
+};
+
+// SVG Icons
+function MicIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Rect x={9} y={1} width={6} height={12} rx={3} stroke="#fff" strokeWidth={1.8} />
+      <Path d="M5 10a7 7 0 0014 0" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={12} y1={17} x2={12} y2={21} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function SearchIcon({ color = '#555' }: { color?: string }) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Circle cx={11} cy={11} r={8} stroke={color} strokeWidth={1.8} />
+      <Path d="M21 21l-4.35-4.35" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Line x1={4} y1={6} x2={20} y2={6} stroke="#555" strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={8} y1={12} x2={16} y2={12} stroke="#555" strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={11} y1={18} x2={13} y2={18} stroke="#555" strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={10} stroke="#fff" strokeWidth={1.8} />
+      <Path d="M12 6v6l4 2" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Line x1={8} y1={6} x2={21} y2={6} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={8} y1={12} x2={21} y2={12} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={8} y1={18} x2={21} y2={18} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+      <Circle cx={4} cy={6} r={1} fill="#fff" />
+      <Circle cx={4} cy={12} r={1} fill="#fff" />
+      <Circle cx={4} cy={18} r={1} fill="#fff" />
+    </Svg>
+  );
+}
+
+function ShifaBadge({ value, size = 'normal' }: { value: number; size?: 'normal' | 'small' | 'large' }) {
+  const rating = getShifaRating(value);
+  const color = getShifaColor(rating);
+  const bgColor = getShifaBgColor(rating);
+  const label = getShifaLabel(rating);
+
+  if (size === 'large') {
+    return (
+      <View style={{
+        backgroundColor: bgColor, borderRadius: 14, padding: 14,
+        borderWidth: 1, borderColor: `${color}30`,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <View>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+            Meal Shifa Index
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color, letterSpacing: -1 }}>{value}</Text>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color }}>{label}</Text>
+          </View>
+        </View>
+        <View style={{
+          width: 36, height: 36, borderRadius: 18,
+          backgroundColor: `${color}20`,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+            <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </View>
+      </View>
+    );
+  }
+
+  if (size === 'small') {
+    return (
+      <View style={{
+        backgroundColor: bgColor, paddingHorizontal: 6, paddingVertical: 2,
+        borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 3,
+      }}>
+        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color, letterSpacing: 0.5 }}>
+          SI {value}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{
+      backgroundColor: bgColor, paddingHorizontal: 8, paddingVertical: 4,
+      borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4,
+    }}>
+      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color }}>
+        SI {value}
+      </Text>
+    </View>
+  );
+}
 
 export default function LogScreen() {
   const params = useLocalSearchParams();
@@ -29,6 +157,7 @@ export default function LogScreen() {
   const [searching, setSearching] = useState(false);
   const [selectedFood, setSelectedFood] = useState<any>(null);
   const [grams, setGrams] = useState('100');
+  const [servingUnit, setServingUnit] = useState('100g');
 
   const loadLog = useCallback(async () => {
     try {
@@ -68,6 +197,7 @@ export default function LogScreen() {
       setSearchModal(false);
       setSelectedFood(null);
       setGrams('100');
+      setServingUnit('100g');
       setSearchQ('');
       setSearchResults([]);
       await loadLog();
@@ -94,117 +224,217 @@ export default function LogScreen() {
   };
 
   const totals = todayLog?.totals || { calories: 0, protein: 0, carbs: 0, fat: 0 };
-  const items = todayLog?.items?.filter((i) => i.meal.toLowerCase() === activeMeal) || [];
+  const items = todayLog?.items?.filter((i: any) => i.meal.toLowerCase() === activeMeal) || [];
+  const mealShifa = todayLog?.mealShifa?.[activeMeal];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
       {/* Header */}
-      <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: '#fff', letterSpacing: -0.5 }}>Food Log</Text>
-        <TouchableOpacity
-          onPress={() => router.push('/(tabs)/scan')}
-          style={{ backgroundColor: `${Colors.primary}20`, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-        >
-          <Text style={{ fontSize: 14 }}>⊙</Text>
-          <Text style={{ fontFamily: 'Inter_600SemiBold', color: Colors.primary, fontSize: 13 }}>AI Scan</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Daily summary bar */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 14, marginHorizontal: 20, backgroundColor: '#171717', borderRadius: 16, marginBottom: 16 }}>
-        {[
-          { label: 'Calories', value: `${Math.round(totals.calories)}`, unit: 'kcal', color: Colors.primary },
-          { label: 'Protein',  value: `${Math.round(totals.protein)}g`,  unit: '',     color: '#f97316' },
-          { label: 'Carbs',    value: `${Math.round(totals.carbs)}g`,    unit: '',     color: Colors.primary },
-          { label: 'Fats',     value: `${Math.round(totals.fat)}g`,      unit: '',     color: Colors.tertiary },
-        ].map((m) => (
-          <View key={m.label} style={{ alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: m.color }}>{m.value}</Text>
-            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: '#a3a3a3', marginTop: 2, letterSpacing: 0.5 }}>{m.label}</Text>
+      <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </View>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', letterSpacing: -0.5 }}>
+              Sanctuary
+            </Text>
           </View>
-        ))}
-      </View>
+          <TouchableOpacity style={{ padding: 4 }}>
+            <SearchIcon color="#666" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Meal tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10, marginBottom: 16 }}>
-        {Object.entries(MEAL_META).map(([key, meta]) => {
-          const mealItems = todayLog?.items?.filter((i) => i.meal.toLowerCase() === key) || [];
-          const mealCals = mealItems.reduce((s, i) => s + i.calories, 0);
-          return (
-            <TouchableOpacity
-              key={key}
-              onPress={() => setActiveMeal(key)}
-              style={{
-                paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14,
-                backgroundColor: activeMeal === key ? meta.color : '#171717',
-                borderWidth: 1, borderColor: activeMeal === key ? meta.color : '#262626',
-                flexDirection: 'row', alignItems: 'center', gap: 6,
-              }}
-            >
-              <Text style={{ fontSize: 14 }}>{meta.icon}</Text>
-              <View>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: '#fff' }}>{meta.label}</Text>
-                {mealCals > 0 && <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: activeMeal === key ? 'rgba(255,255,255,0.8)' : '#a3a3a3' }}>{Math.round(mealCals)} kcal</Text>}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+        <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: '#fff', letterSpacing: -0.5, marginBottom: 4 }}>
+          {'What did you eat\ntoday?'}
+        </Text>
+      </View>
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        {items.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingTop: 40 }}>
-            <Text style={{ fontSize: 48, marginBottom: 16 }}>{MEAL_META[activeMeal]?.icon}</Text>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 18, color: '#fff', marginBottom: 8 }}>
-              No {MEAL_META[activeMeal]?.label} yet
-            </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 14, textAlign: 'center' }}>
-              Add food manually or use AI Scan to{'\n'}detect and log your meal instantly.
+        {/* Describe meal input */}
+        <View style={{
+          backgroundColor: '#141414', borderRadius: 14, padding: 16, marginTop: 12,
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          borderWidth: 1, borderColor: '#1a1a1a',
+        }}>
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: '#444' }}>
+            Describe your meal...
+          </Text>
+          <TouchableOpacity style={{
+            width: 38, height: 38, borderRadius: 19,
+            backgroundColor: Colors.primary,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <MicIcon />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search bar */}
+        <TouchableOpacity
+          onPress={() => setSearchModal(true)}
+          style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: 16, backgroundColor: '#111', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14,
+            borderWidth: 1, borderColor: '#1a1a1a',
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <SearchIcon />
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: '#444' }}>
+              Search for food or scan
             </Text>
           </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {items.map((item) => (
-              <View
-                key={item.id}
-                style={{ backgroundColor: '#171717', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center' }}
-              >
-                {item.aiDetected && (
-                  <View style={{ position: 'absolute', top: 10, right: 12, backgroundColor: Colors.tertiaryContainer, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ color: Colors.tertiaryFixed, fontFamily: 'Inter_700Bold', fontSize: 8, letterSpacing: 1 }}>AI</Text>
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#fff', marginBottom: 4 }}>
-                    {item.food.name}
-                  </Text>
-                  <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 12 }}>
-                    {item.grams}g · P: {Math.round(item.protein)}g · C: {Math.round(item.carbs)}g · F: {Math.round(item.fat)}g
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', marginRight: 10 }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff' }}>{Math.round(item.calories)}</Text>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#a3a3a3', letterSpacing: 1 }}>KCAL</Text>
-                </View>
-                <TouchableOpacity onPress={() => deleteItem(item.id)} style={{ padding: 6 }}>
-                  <Text style={{ color: '#555', fontSize: 18 }}>✕</Text>
+          <FilterIcon />
+        </TouchableOpacity>
+
+        {/* Quick Log */}
+        <TouchableOpacity style={{
+          marginTop: 16, backgroundColor: '#0c1a3d', borderRadius: 14, padding: 16,
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          borderWidth: 1, borderColor: '#1a2a5a',
+        }}>
+          <View>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+              Quick Log
+            </Text>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#fff' }}>Recent Meals</Text>
+          </View>
+          <ClockIcon />
+        </TouchableOpacity>
+
+        {/* Meal tabs */}
+        <View style={{ marginTop: 20, marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              Meal Log
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/scan')}>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: Colors.primary }}>View History</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {Object.entries(MEAL_LABELS).map(([key, label]) => {
+              const mealItems = todayLog?.items?.filter((i: any) => i.meal.toLowerCase() === key) || [];
+              const mealCals = mealItems.reduce((s: number, i: any) => s + i.calories, 0);
+              const isActive = activeMeal === key;
+              const color = MEAL_COLORS[key];
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => setActiveMeal(key)}
+                  style={{
+                    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
+                    backgroundColor: isActive ? color : '#111',
+                    borderWidth: 1, borderColor: isActive ? color : '#1a1a1a',
+                    marginRight: 8,
+                  }}
+                >
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: '#fff' }}>{label}</Text>
+                  {mealCals > 0 && (
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: isActive ? 'rgba(255,255,255,0.8)' : '#555', marginTop: 2 }}>
+                      {Math.round(mealCals)} kcal
+                    </Text>
+                  )}
                 </TouchableOpacity>
-              </View>
-            ))}
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Meal Shifa Index Card */}
+        {mealShifa && mealShifa.shifaIndex > 0 && items.length > 0 && (
+          <View style={{ marginTop: 8, marginBottom: 8 }}>
+            <ShifaBadge value={mealShifa.shifaIndex} size="large" />
           </View>
         )}
 
+        {/* Items list */}
+        {items.length === 0 ? (
+          <View style={{ alignItems: 'center', paddingTop: 36, paddingBottom: 20 }}>
+            <View style={{
+              width: 60, height: 60, borderRadius: 30, backgroundColor: '#111',
+              alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+              borderWidth: 1, borderColor: '#1a1a1a',
+            }}>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                <Path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M17 2v6a4 4 0 01-4 4M17 2v20M21 2c0 4-2 8-4 8" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </View>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff', marginBottom: 6 }}>
+              {'No ' + MEAL_LABELS[activeMeal] + ' yet'}
+            </Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+              {'Add food manually or use AI Scan to\ndetect and log your meal instantly.'}
+            </Text>
+          </View>
+        ) : (
+          <View style={{ marginTop: 8 }}>
+            {items.map((item: any) => {
+              const itemShifa = item.shifaIndex || 0;
+              return (
+                <View
+                  key={item.id}
+                  style={{
+                    backgroundColor: '#111', borderRadius: 14, padding: 16,
+                    marginBottom: 8, borderWidth: 1, borderColor: '#1a1a1a',
+                  }}
+                >
+                  {/* Top row: badges */}
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+                    {item.aiDetected && (
+                      <View style={{ backgroundColor: '#064e3b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ color: '#34d399', fontFamily: 'Inter_700Bold', fontSize: 8, letterSpacing: 1 }}>AI</Text>
+                      </View>
+                    )}
+                    {itemShifa > 0 && (
+                      <ShifaBadge value={itemShifa} size="small" />
+                    )}
+                  </View>
+
+                  {/* Main content row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#fff', marginBottom: 4 }}>
+                        {item.food.name}
+                      </Text>
+                      <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12 }}>
+                        {item.grams + 'g | P: ' + Math.round(item.protein) + 'g  C: ' + Math.round(item.carbs) + 'g  F: ' + Math.round(item.fat) + 'g'}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', marginRight: 10 }}>
+                      <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: '#fff' }}>{Math.round(item.calories)}</Text>
+                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1 }}>KCAL</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => deleteItem(item.id)} style={{ padding: 6 }}>
+                      <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                        <Path d="M18 6L6 18M6 6l12 12" stroke="#444" strokeWidth={2} strokeLinecap="round" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Manual Entry button */}
         <TouchableOpacity
           onPress={() => setSearchModal(true)}
-          style={{ marginTop: 20, backgroundColor: '#171717', borderRadius: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: '#262626', borderStyle: 'dashed' }}
+          style={{
+            marginTop: 16, backgroundColor: Colors.primary, borderRadius: 14,
+            paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
         >
-          <Text style={{ color: Colors.primary, fontSize: 20 }}>+</Text>
-          <Text style={{ fontFamily: 'Inter_600SemiBold', color: Colors.primary, fontSize: 15 }}>
-            Add to {MEAL_META[activeMeal]?.label}
-          </Text>
+          <ListIcon />
+          <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 15 }}>Manual Entry</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -212,9 +442,9 @@ export default function LogScreen() {
       <Modal visible={searchModal} animationType="slide" presentationStyle="pageSheet">
         <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 }}>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 22, color: '#fff' }}>Search Food</Text>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: '#fff' }}>Search Food</Text>
             <TouchableOpacity onPress={() => { setSearchModal(false); setSelectedFood(null); }}>
-              <Text style={{ color: '#a3a3a3', fontSize: 15, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
+              <Text style={{ color: '#555', fontSize: 15, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
 
@@ -223,84 +453,119 @@ export default function LogScreen() {
               value={searchQ}
               onChangeText={(t) => { setSearchQ(t); searchFood(t); }}
               placeholder="Search foods..."
-              placeholderTextColor="#404040"
+              placeholderTextColor="#333"
               autoFocus
               style={{
-                backgroundColor: '#171717', borderRadius: 14, padding: 16,
+                backgroundColor: '#111', borderRadius: 12, padding: 16,
                 color: '#fff', fontFamily: 'Inter_400Regular', fontSize: 16,
-                borderWidth: 1, borderColor: '#262626',
+                borderWidth: 1, borderColor: '#1a1a1a',
               }}
             />
           </View>
 
           {selectedFood ? (
             <View style={{ paddingHorizontal: 20 }}>
-              <View style={{ backgroundColor: '#171717', borderRadius: 16, padding: 20, gap: 16 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ backgroundColor: '#111', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#1a1a1a' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 18, color: '#fff', flex: 1 }}>{selectedFood.name}</Text>
-                  <TouchableOpacity onPress={() => setSelectedFood(null)}>
-                    <Text style={{ color: '#a3a3a3', fontSize: 13 }}>Change</Text>
+                  <TouchableOpacity onPress={() => { setSelectedFood(null); setServingUnit('100g'); }}>
+                    <Text style={{ color: '#555', fontSize: 13 }}>Change</Text>
                   </TouchableOpacity>
                 </View>
-                <View>
-                  <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', fontSize: 12, marginBottom: 8, letterSpacing: 1 }}>SERVING SIZE</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#262626', borderRadius: 12 }}>
-                    <TextInput
-                      value={grams}
-                      onChangeText={setGrams}
-                      keyboardType="decimal-pad"
-                      style={{ flex: 1, padding: 16, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
-                    />
-                    <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>grams</Text>
-                  </View>
+                <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 8, letterSpacing: 1.2 }}>SERVING SIZE</Text>
+                <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+                  {SERVING_UNITS.map((u, idx) => (
+                    <TouchableOpacity
+                      key={u.label}
+                      onPress={() => { setServingUnit(u.label); setGrams(String(u.grams)); }}
+                      style={{
+                        paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                        marginRight: idx < SERVING_UNITS.length - 1 ? 6 : 0,
+                        backgroundColor: servingUnit === u.label ? Colors.primary : '#1a1a1a',
+                        borderWidth: 1, borderColor: servingUnit === u.label ? Colors.primary : '#2a2a2a',
+                      }}
+                    >
+                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: servingUnit === u.label ? '#fff' : '#666' }}>
+                        {u.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                {grams && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#262626', borderRadius: 12, padding: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>
+                  <TextInput
+                    value={grams}
+                    onChangeText={(t) => { setGrams(t); setServingUnit('custom'); }}
+                    keyboardType="decimal-pad"
+                    style={{ flex: 1, padding: 16, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
+                  />
+                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>g</Text>
+                </View>
+                {!!grams && Number(grams) > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, marginBottom: 16 }}>
                     {[
-                      { label: 'Calories', val: Math.round((selectedFood.calories * Number(grams)) / 100) },
-                      { label: 'Protein',  val: `${Math.round((selectedFood.protein  * Number(grams)) / 100)}g` },
-                      { label: 'Carbs',    val: `${Math.round((selectedFood.carbs    * Number(grams)) / 100)}g` },
-                      { label: 'Fat',      val: `${Math.round((selectedFood.fat      * Number(grams)) / 100)}g` },
+                      { label: 'Calories', val: String(Math.round((selectedFood.calories * Number(grams)) / 100)) },
+                      { label: 'Protein',  val: Math.round((selectedFood.protein  * Number(grams)) / 100) + 'g' },
+                      { label: 'Carbs',    val: Math.round((selectedFood.carbs    * Number(grams)) / 100) + 'g' },
+                      { label: 'Fat',      val: Math.round((selectedFood.fat      * Number(grams)) / 100) + 'g' },
                     ].map((m) => (
                       <View key={m.label} style={{ alignItems: 'center' }}>
                         <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#fff' }}>{m.val}</Text>
-                        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: '#a3a3a3', marginTop: 2 }}>{m.label}</Text>
+                        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: '#555', marginTop: 2 }}>{m.label}</Text>
                       </View>
                     ))}
                   </View>
                 )}
+
+                {/* Shifa Index preview for selected food */}
+                {selectedFood.shifaIndex != null && selectedFood.shifaIndex > 0 && (
+                  <View style={{ marginBottom: 16 }}>
+                    <ShifaBadge value={selectedFood.shifaIndex} size="normal" />
+                  </View>
+                )}
+
                 <TouchableOpacity
                   onPress={addFoodToLog}
                   style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
                 >
                   <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>
-                    Add to {MEAL_META[activeMeal]?.label}
+                    {'Add to ' + MEAL_LABELS[activeMeal]}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }}>
               {searching && <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} />}
-              {searchResults.map((food) => (
+              {searchResults.map((food: any) => (
                 <TouchableOpacity
                   key={food.id}
                   onPress={() => setSelectedFood(food)}
-                  style={{ backgroundColor: '#171717', borderRadius: 14, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                  style={{
+                    backgroundColor: '#111', borderRadius: 14, padding: 16,
+                    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                    marginBottom: 8, borderWidth: 1, borderColor: '#1a1a1a',
+                  }}
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#fff', fontSize: 15 }}>{food.name}</Text>
-                    {food.brandName && <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 12 }}>{food.brandName}</Text>}
+                    {food.brandName ? (
+                      <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12 }}>{food.brandName}</Text>
+                    ) : null}
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontFamily: 'Inter_700Bold', color: Colors.primary, fontSize: 14 }}>{Math.round(food.calories)}</Text>
-                    <Text style={{ fontFamily: 'Inter_500Medium', color: '#a3a3a3', fontSize: 10 }}>kcal/100g</Text>
+                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontFamily: 'Inter_700Bold', color: Colors.primary, fontSize: 14 }}>{Math.round(food.calories)}</Text>
+                      <Text style={{ fontFamily: 'Inter_500Medium', color: '#555', fontSize: 10 }}>kcal/100g</Text>
+                    </View>
+                    {food.shifaIndex != null && food.shifaIndex > 0 && (
+                      <ShifaBadge value={food.shifaIndex} size="small" />
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}
-              {!searching && searchQ && searchResults.length === 0 && (
-                <Text style={{ color: '#a3a3a3', textAlign: 'center', marginTop: 40, fontFamily: 'Inter_400Regular' }}>
-                  No results for "{searchQ}"
+              {!searching && searchQ.length > 0 && searchResults.length === 0 && (
+                <Text style={{ color: '#555', textAlign: 'center', marginTop: 40, fontFamily: 'Inter_400Regular' }}>
+                  {'No results for "' + searchQ + '"'}
                 </Text>
               )}
             </ScrollView>

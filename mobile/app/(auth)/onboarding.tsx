@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Dimensions,
+  ActivityIndicator, Dimensions,
 } from 'react-native';
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { authAPI } from '../../services/api';
 import { useStore } from '../../store/useStore';
 import { Colors } from '../../constants/colors';
@@ -12,25 +12,97 @@ import { Colors } from '../../constants/colors';
 const TOTAL_STEPS = 5;
 const { width } = Dimensions.get('window');
 
+// SVG Icons for activity levels
+function SedentaryIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={5} width={16} height={14} rx={2} stroke={color} strokeWidth={1.8} />
+      <Line x1={9} y1={9} x2={15} y2={9} stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={9} y1={13} x2={12} y2={13} stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function WalkIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={5} r={2} stroke={color} strokeWidth={1.8} />
+      <Path d="M10 22l1-7M14 22l-1-7M10 15l-2-5 4-1 4 2-2 4" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function RunIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function BoltIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function CheckIcon({ color = '#fff' }: { color?: string }) {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// Goal icons
+function TrendDownIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M23 18l-9.5-9.5-5 5L1 6" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M17 18h6v-6" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function BalanceIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Line x1={4} y1={12} x2={20} y2={12} stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Circle cx={12} cy={12} r={2} stroke={color} strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
+function TrendUpIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M23 6l-9.5 9.5-5-5L1 18" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M17 6h6v6" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 const ACTIVITY_OPTIONS = [
-  { value: 'sedentary', label: 'Sedentary', desc: 'Typical office job; little to no exercise.' },
-  { value: 'lightly_active', label: 'Lightly Active', desc: 'Active daily life or light exercise 1-2 times/week.' },
-  { value: 'moderately_active', label: 'Moderately Active', desc: 'Intense exercise or sports 3-5 times/week.' },
-  { value: 'very_active', label: 'Very Active', desc: 'Heavy physical labor or daily intense training.' },
+  { value: 'sedentary', label: 'Sedentary', desc: 'Typical office job, little to no exercise.', icon: SedentaryIcon },
+  { value: 'lightly_active', label: 'Lightly Active', desc: 'Active daily life or light exercise 1-2 times/week.', icon: WalkIcon },
+  { value: 'moderately_active', label: 'Moderately Active', desc: 'Intense exercise or sports 3-5 times/week.', icon: RunIcon },
+  { value: 'very_active', label: 'Very Active', desc: 'Heavy physical labor or daily intense training.', icon: BoltIcon },
 ];
 
 const GOAL_OPTIONS = [
-  { value: 'lose', label: 'Lose Weight', icon: '📉' },
-  { value: 'maintain', label: 'Maintain', icon: '⚖️' },
-  { value: 'gain', label: 'Gain Muscle', icon: '📈' },
+  { value: 'lose', label: 'Lose Weight', icon: TrendDownIcon },
+  { value: 'maintain', label: 'Maintain', icon: BalanceIcon },
+  { value: 'gain', label: 'Gain Muscle', icon: TrendUpIcon },
 ];
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { setUser, setTokens } = useStore();
 
-  // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +113,25 @@ export default function Onboarding() {
   const [goalWeight, setGoalWeight] = useState('');
   const [activityLevel, setActivityLevel] = useState('moderately_active');
   const [goal, setGoal] = useState('maintain');
+  const [customCalories, setCustomCalories] = useState('');
+
+  const validate = (): string | null => {
+    if (step === 1) {
+      if (!name.trim()) return 'Please enter your name.';
+      if (!email.trim() || !email.includes('@')) return 'Please enter a valid email.';
+      if (password.length < 8) return 'Password must be at least 8 characters.';
+    }
+    if (step === 2) {
+      if (!age || isNaN(Number(age)) || Number(age) < 10 || Number(age) > 120) return 'Please enter a valid age.';
+      if (!heightCm || isNaN(Number(heightCm)) || Number(heightCm) < 50) return 'Please enter a valid height in cm.';
+      if (!currentWeight || isNaN(Number(currentWeight)) || Number(currentWeight) < 20) return 'Please enter a valid current weight in kg.';
+    }
+    if (step === 5) {
+      const cal = Number(customCalories);
+      if (!customCalories || isNaN(cal) || cal < 500 || cal > 10000) return 'Please enter a valid calorie goal (500-10,000).';
+    }
+    return null;
+  };
 
   const tdeeEstimate = () => {
     if (!age || !currentWeight || !activityLevel) return null;
@@ -54,15 +145,38 @@ export default function Onboarding() {
     return Math.round(tdee + adj);
   };
 
-  const next = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+  const next = () => {
+    const err = validate();
+    if (err) { setError(err); return; }
+    setError('');
+    const nextStep = Math.min(step + 1, TOTAL_STEPS);
+    if (nextStep === TOTAL_STEPS && !customCalories) {
+      const est = tdeeEstimate();
+      if (est) setCustomCalories(String(est));
+    }
+    setStep(nextStep);
+  };
+
   const back = () => {
-    if (step === 1) router.back();
-    else setStep((s) => s - 1);
+    setError('');
+    if (step === 1) {
+      if (router.canGoBack()) router.back();
+      else router.replace('/(auth)/welcome');
+    } else {
+      setStep((s) => s - 1);
+    }
   };
 
   const register = async () => {
+    const cal = Number(customCalories);
+    if (customCalories && (isNaN(cal) || cal < 500 || cal > 10000)) {
+      setError('Please enter a valid calorie goal (500-10,000).');
+      return;
+    }
     setLoading(true);
+    setError('');
     try {
+      const dailyCalGoal = Number(customCalories) || tdeeEstimate() || 2000;
       const res = await authAPI.register({
         email, password, name,
         age: Number(age),
@@ -72,12 +186,14 @@ export default function Onboarding() {
         goalWeight: Number(goalWeight) || Number(currentWeight),
         activityLevel,
         goal,
+        dailyCalGoal,
       });
       setTokens(res.data.accessToken, res.data.refreshToken);
       setUser(res.data.user);
       router.replace('/(tabs)');
     } catch (err: any) {
-      Alert.alert('Registration failed', err.response?.data?.error || 'Something went wrong');
+      const msg = err.response?.data?.error || err.message || 'Something went wrong. Is the server running?';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -87,19 +203,27 @@ export default function Onboarding() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* Progress bar */}
+      {/* Top bar */}
       <View style={{ paddingTop: 60, paddingHorizontal: 24 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-          <Text style={{ color: Colors.primary, fontFamily: 'Inter_700Bold', fontSize: 12, letterSpacing: 2 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <Text style={{ color: Colors.primary, fontFamily: 'Inter_800ExtraBold', fontSize: 16, letterSpacing: -0.3 }}>
+            Kinetic Sanctuary
+          </Text>
+          <TouchableOpacity onPress={back}>
+            <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', fontSize: 14 }}>Exit</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+          <Text style={{ color: Colors.primary, fontFamily: 'Inter_700Bold', fontSize: 12, letterSpacing: 1.5 }}>
             STEP {String(step).padStart(2, '0')} OF {String(TOTAL_STEPS).padStart(2, '0')}
           </Text>
           {step > 1 && (
-            <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', fontSize: 14 }}>
+            <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', fontSize: 13 }}>
               {['', 'Account', 'Body', 'Goal', 'Activity', 'Review'][step]}
             </Text>
           )}
         </View>
-        <View style={{ height: 3, backgroundColor: '#262626', borderRadius: 4 }}>
+        <View style={{ height: 3, backgroundColor: '#1a1a1a', borderRadius: 4 }}>
           <View style={{
             height: 3, backgroundColor: Colors.primary,
             borderRadius: 4, width: `${progressWidth}%`,
@@ -108,16 +232,16 @@ export default function Onboarding() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 120 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 36, paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* STEP 1: Account */}
         {step === 1 && (
           <View>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
               Create your{'\n'}<Text style={{ color: Colors.primary }}>Sanctuary</Text>
             </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 15, marginBottom: 40, lineHeight: 22 }}>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 15, marginBottom: 36, lineHeight: 22 }}>
               Let's set up your account to get started.
             </Text>
             <View style={{ gap: 14 }}>
@@ -131,15 +255,15 @@ export default function Onboarding() {
                   value={field.value}
                   onChangeText={field.setter}
                   placeholder={field.placeholder}
-                  placeholderTextColor="#404040"
+                  placeholderTextColor="#333"
                   keyboardType={field.keyboardType}
                   secureTextEntry={field.secure}
                   autoCapitalize={field.keyboardType === 'email-address' ? 'none' : 'words'}
                   style={{
-                    backgroundColor: '#171717', borderRadius: 14,
+                    backgroundColor: '#111', borderRadius: 14,
                     padding: 18, color: '#fff',
                     fontFamily: 'Inter_400Regular', fontSize: 16,
-                    borderWidth: 1, borderColor: '#262626',
+                    borderWidth: 1, borderColor: '#1a1a1a',
                   }}
                 />
               ))}
@@ -150,53 +274,107 @@ export default function Onboarding() {
         {/* STEP 2: Body metrics */}
         {step === 2 && (
           <View>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
-              Your{'\n'}<Text style={{ color: Colors.primary }}>body metrics</Text>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
+              Personalize Your{'\n'}<Text style={{ color: Colors.primary }}>Journey</Text>
             </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 15, marginBottom: 40 }}>
-              We use this to calculate your precise daily calorie target.
+            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 15, marginBottom: 36 }}>
+              Enter your details to calculate your daily energy requirements.
             </Text>
             <View style={{ gap: 14 }}>
+              {/* Gender selector */}
+              <View>
+                <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 8, letterSpacing: 1.2 }}>GENDER</Text>
+                <View style={{
+                  flexDirection: 'row', backgroundColor: '#111', borderRadius: 14,
+                  borderWidth: 1, borderColor: '#1a1a1a', padding: 4,
+                }}>
+                  {(['male', 'female'] as const).map((g) => (
+                    <TouchableOpacity
+                      key={g}
+                      onPress={() => setGender(g)}
+                      style={{
+                        flex: 1, paddingVertical: 12, borderRadius: 10,
+                        backgroundColor: gender === g ? '#1a1a1a' : 'transparent',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ color: gender === g ? '#fff' : '#555', fontFamily: 'Inter_600SemiBold', fontSize: 13, textTransform: 'capitalize' }}>
+                        {g === 'male' ? '\u2642 Male' : '\u2640 Female'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Age & Weight side by side */}
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                {(['male', 'female', 'other'] as const).map((g) => (
-                  <TouchableOpacity
-                    key={g}
-                    onPress={() => setGender(g)}
-                    style={{
-                      flex: 1, paddingVertical: 14, borderRadius: 14,
-                      backgroundColor: gender === g ? Colors.primary : '#171717',
-                      borderWidth: 1, borderColor: gender === g ? Colors.primary : '#262626',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ color: gender === g ? '#fff' : '#a3a3a3', fontFamily: 'Inter_600SemiBold', fontSize: 13, textTransform: 'capitalize' }}>
-                      {g}
+                {[
+                  { label: 'Age', value: age, setter: setAge, unit: 'yrs' },
+                  { label: 'Weight', value: currentWeight, setter: setCurrentWeight, unit: 'kg' },
+                ].map((f) => (
+                  <View key={f.label} style={{ flex: 1 }}>
+                    <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>
+                      {f.label.toUpperCase()}
                     </Text>
-                  </TouchableOpacity>
+                    <View style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      backgroundColor: '#111', borderRadius: 14,
+                      borderWidth: 1, borderColor: '#1a1a1a',
+                    }}>
+                      <TextInput
+                        value={f.value}
+                        onChangeText={f.setter}
+                        keyboardType="decimal-pad"
+                        placeholderTextColor="#333"
+                        placeholder="0"
+                        style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
+                      />
+                      <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>{f.unit}</Text>
+                    </View>
+                  </View>
                 ))}
               </View>
-              {[
-                { label: 'Age', value: age, setter: setAge, unit: 'yrs' },
-                { label: 'Height', value: heightCm, setter: setHeightCm, unit: 'cm' },
-                { label: 'Current Weight', value: currentWeight, setter: setCurrentWeight, unit: 'kg' },
-              ].map((f) => (
-                <View key={f.label}>
-                  <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', fontSize: 12, marginBottom: 6, letterSpacing: 1 }}>
-                    {f.label.toUpperCase()}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#171717', borderRadius: 14, borderWidth: 1, borderColor: '#262626' }}>
-                    <TextInput
-                      value={f.value}
-                      onChangeText={f.setter}
-                      keyboardType="decimal-pad"
-                      placeholderTextColor="#404040"
-                      placeholder="0"
-                      style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_500Medium', fontSize: 16 }}
-                    />
-                    <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', paddingRight: 18 }}>{f.unit}</Text>
-                  </View>
+
+              {/* Height */}
+              <View>
+                <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>HEIGHT</Text>
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  backgroundColor: '#111', borderRadius: 14,
+                  borderWidth: 1, borderColor: '#1a1a1a',
+                }}>
+                  <TextInput
+                    value={heightCm}
+                    onChangeText={setHeightCm}
+                    keyboardType="decimal-pad"
+                    placeholderTextColor="#333"
+                    placeholder="170"
+                    style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
+                  />
+                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>cm</Text>
+                  <View style={{ flex: 1, height: 4, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 16 }} />
                 </View>
-              ))}
+              </View>
+
+              {/* Goal Weight */}
+              <View>
+                <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>GOAL WEIGHT</Text>
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  backgroundColor: '#111', borderRadius: 14,
+                  borderWidth: 1, borderColor: '#1a1a1a',
+                }}>
+                  <TextInput
+                    value={goalWeight}
+                    onChangeText={setGoalWeight}
+                    keyboardType="decimal-pad"
+                    placeholderTextColor="#333"
+                    placeholder={currentWeight || '70'}
+                    style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
+                  />
+                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>kg</Text>
+                </View>
+              </View>
             </View>
           </View>
         )}
@@ -204,53 +382,46 @@ export default function Onboarding() {
         {/* STEP 3: Goal */}
         {step === 3 && (
           <View>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
               Define your{'\n'}<Text style={{ color: Colors.primary }}>kinetic target</Text>
             </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 15, marginBottom: 40 }}>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 15, marginBottom: 36 }}>
               What's your primary fitness goal?
             </Text>
-            <View style={{ gap: 14 }}>
-              {GOAL_OPTIONS.map((g) => (
-                <TouchableOpacity
-                  key={g.value}
-                  onPress={() => setGoal(g.value)}
-                  style={{
-                    backgroundColor: goal === g.value ? '#001a4d' : '#171717',
-                    borderRadius: 16, padding: 20,
-                    flexDirection: 'row', alignItems: 'center', gap: 16,
-                    borderWidth: 1.5,
-                    borderColor: goal === g.value ? Colors.primary : '#262626',
-                  }}
-                >
-                  <Text style={{ fontSize: 28 }}>{g.icon}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 16 }}>{g.label}</Text>
-                  </View>
-                  {goal === g.value && (
-                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ color: '#fff', fontSize: 12 }}>✓</Text>
+            <View style={{ gap: 12 }}>
+              {GOAL_OPTIONS.map((g) => {
+                const isSelected = goal === g.value;
+                const IconComp = g.icon;
+                return (
+                  <TouchableOpacity
+                    key={g.value}
+                    onPress={() => setGoal(g.value)}
+                    style={{
+                      backgroundColor: isSelected ? '#0c1a3d' : '#111',
+                      borderRadius: 16, padding: 20,
+                      flexDirection: 'row', alignItems: 'center', gap: 16,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? Colors.primary : '#1a1a1a',
+                    }}
+                  >
+                    <View style={{
+                      width: 40, height: 40, borderRadius: 12,
+                      backgroundColor: isSelected ? 'rgba(59,130,246,0.15)' : '#1a1a1a',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <IconComp color={isSelected ? Colors.primary : '#555'} />
                     </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-
-              <View style={{ marginTop: 8 }}>
-                <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', fontSize: 12, marginBottom: 6, letterSpacing: 1 }}>
-                  GOAL WEIGHT
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#171717', borderRadius: 14, borderWidth: 1, borderColor: '#262626' }}>
-                  <TextInput
-                    value={goalWeight}
-                    onChangeText={setGoalWeight}
-                    keyboardType="decimal-pad"
-                    placeholder={currentWeight || '72'}
-                    placeholderTextColor="#404040"
-                    style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_500Medium', fontSize: 16 }}
-                  />
-                  <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', paddingRight: 18 }}>kg</Text>
-                </View>
-              </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 16 }}>{g.label}</Text>
+                    </View>
+                    {isSelected && (
+                      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                        <CheckIcon />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -258,65 +429,87 @@ export default function Onboarding() {
         {/* STEP 4: Activity level */}
         {step === 4 && (
           <View>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
               What is your{'\n'}<Text style={{ color: Colors.primary }}>Activity Level?</Text>
             </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 15, marginBottom: 40, lineHeight: 22 }}>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 15, marginBottom: 36, lineHeight: 22 }}>
               This helps us calculate your baseline metabolic rate with professional precision.
             </Text>
             <View style={{ gap: 12 }}>
-              {ACTIVITY_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => setActivityLevel(opt.value)}
-                  style={{
-                    backgroundColor: activityLevel === opt.value ? '#001a4d' : '#171717',
-                    borderRadius: 16, padding: 20,
-                    borderWidth: 1.5,
-                    borderColor: activityLevel === opt.value ? Colors.primary : '#262626',
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 16, marginBottom: 4 }}>
-                      {opt.label}
-                    </Text>
-                    <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_400Regular', fontSize: 13 }}>
-                      {opt.desc}
-                    </Text>
-                  </View>
-                  {activityLevel === opt.value && (
-                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 12 }}>
-                      <Text style={{ color: '#fff', fontSize: 12 }}>✓</Text>
+              {ACTIVITY_OPTIONS.map((opt) => {
+                const isSelected = activityLevel === opt.value;
+                const IconComp = opt.icon;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => setActivityLevel(opt.value)}
+                    style={{
+                      backgroundColor: isSelected ? '#0c1a3d' : '#111',
+                      borderRadius: 16, padding: 20,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? Colors.primary : '#1a1a1a',
+                    }}
+                  >
+                    <View style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      backgroundColor: isSelected ? 'rgba(59,130,246,0.15)' : '#1a1a1a',
+                      alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+                    }}>
+                      <IconComp color={isSelected ? Colors.primary : '#555'} />
                     </View>
-                  )}
-                </TouchableOpacity>
-              ))}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 16, marginBottom: 4 }}>
+                          {opt.label}
+                        </Text>
+                        <Text style={{ color: '#555', fontFamily: 'Inter_400Regular', fontSize: 13 }}>
+                          {opt.desc}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 12 }}>
+                          <CheckIcon />
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
 
-        {/* STEP 5: Review & estimated TDEE */}
+        {/* STEP 5: Review & Calorie Goal */}
         {step === 5 && (
           <View>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
               Your plan is{'\n'}<Text style={{ color: Colors.tertiary }}>ready</Text>
             </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#a3a3a3', fontSize: 15, marginBottom: 32, lineHeight: 22 }}>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 15, marginBottom: 28, lineHeight: 22 }}>
               Based on your profile, here's your personalized nutrition target.
             </Text>
 
-            {tdeeEstimate() && (
-              <View style={{ backgroundColor: '#171717', borderRadius: 20, padding: 28, marginBottom: 24, alignItems: 'center', borderWidth: 1, borderColor: '#262626' }}>
-                <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_600SemiBold', fontSize: 12, letterSpacing: 2, marginBottom: 8 }}>
-                  ESTIMATED DAILY INTAKE
-                </Text>
-                <Text style={{ fontFamily: 'Inter_900Black', fontSize: 52, color: Colors.primary, letterSpacing: -2 }}>
-                  {tdeeEstimate()?.toLocaleString()}
-                </Text>
-                <Text style={{ fontFamily: 'Inter_500Medium', color: '#a3a3a3', fontSize: 14 }}>kcal / day</Text>
+            {/* Editable calorie goal */}
+            <View style={{
+              backgroundColor: '#0c1a3d', borderRadius: 18, padding: 24, marginBottom: 24,
+              borderWidth: 1, borderColor: '#1a2a5a',
+            }}>
+              <Text style={{ color: Colors.primary, fontFamily: 'Inter_600SemiBold', fontSize: 10, letterSpacing: 1.5, marginBottom: 12, textTransform: 'uppercase' }}>
+                Estimated TDEE
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                <TextInput
+                  value={customCalories}
+                  onChangeText={setCustomCalories}
+                  keyboardType="number-pad"
+                  style={{
+                    fontFamily: 'Inter_900Black', fontSize: 48, color: '#fff',
+                    letterSpacing: -2, minWidth: 140,
+                  }}
+                />
+                <Text style={{ fontFamily: 'Inter_500Medium', color: '#555', fontSize: 16 }}>kcal/day</Text>
               </View>
-            )}
+            </View>
 
             <View style={{ gap: 12 }}>
               {[
@@ -325,39 +518,57 @@ export default function Onboarding() {
                 { label: 'Current Weight', value: `${currentWeight} kg` },
                 { label: 'Target Weight', value: `${goalWeight || currentWeight} kg` },
               ].map((row) => (
-                <View key={row.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#171717' }}>
-                  <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_500Medium', fontSize: 15 }}>{row.label}</Text>
+                <View key={row.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' }}>
+                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', fontSize: 15 }}>{row.label}</Text>
                   <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 15 }}>{row.value}</Text>
                 </View>
               ))}
             </View>
+
+            <Text style={{
+              fontFamily: 'Inter_400Regular', color: '#333', fontSize: 11, textAlign: 'center',
+              marginTop: 24, letterSpacing: 0.5, textTransform: 'uppercase',
+            }}>
+              Calculated using the Mifflin-St Jeor Equation
+            </Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Bottom nav buttons */}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 24, paddingBottom: 48, backgroundColor: '#000', flexDirection: 'row', gap: 12 }}>
-        <TouchableOpacity
-          onPress={back}
-          style={{ flex: 1, paddingVertical: 18, borderRadius: 16, backgroundColor: '#171717', alignItems: 'center', borderWidth: 1, borderColor: '#262626' }}
-        >
-          <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#a3a3a3', fontSize: 16 }}>← Back</Text>
-        </TouchableOpacity>
+      {/* Bottom nav */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#000', paddingHorizontal: 24, paddingTop: 12, paddingBottom: 48 }}>
+        {error ? (
+          <View style={{ backgroundColor: 'rgba(248,113,113,0.08)', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(248,113,113,0.15)' }}>
+            <Text style={{ color: '#fca5a5', fontFamily: 'Inter_500Medium', fontSize: 14 }}>{error}</Text>
+          </View>
+        ) : null}
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity
+            onPress={back}
+            style={{
+              flex: 1, paddingVertical: 18, borderRadius: 14,
+              backgroundColor: '#111', alignItems: 'center',
+              borderWidth: 1, borderColor: '#1a1a1a',
+            }}
+          >
+            <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#555', fontSize: 16 }}>Back</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={step === TOTAL_STEPS ? register : next}
-          disabled={loading}
-          style={{ flex: 2, paddingVertical: 18, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center' }}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>
-              {step === TOTAL_STEPS ? 'Launch My Sanctuary' : 'Continue →'}
-            </Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={step === TOTAL_STEPS ? register : next}
+            disabled={loading}
+            style={{ flex: 2, paddingVertical: 18, borderRadius: 14, backgroundColor: Colors.primary, alignItems: 'center' }}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>
+                {step === TOTAL_STEPS ? 'Launch My Sanctuary' : 'Continue'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

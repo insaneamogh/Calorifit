@@ -12,6 +12,7 @@ const FOOD_JSON_SCHEMA = `{
       "carbs": number,
       "fat": number,
       "fiber": number,
+      "glycemicIndex": number,
       "tags": ["string"]
     }
   ],
@@ -37,6 +38,7 @@ Rules:
 - estimatedGrams: realistic portion weight in grams
 - calories: total calories for that portion
 - protein/carbs/fat/fiber: grams for that portion
+- glycemicIndex: the estimated Glycemic Index (GI) of this food on a scale of 0-100. Pure proteins/fats = 0, low GI foods < 55, medium 56-69, high >= 70. Be accurate based on nutritional science.
 - tags: relevant tags like "High Protein", "Low Carb", "High Fiber", "Vitamin C", etc. (max 3)
 - confidence: how confident you are in the identification
 - notes: brief note about the meal (optional)`;
@@ -74,6 +76,7 @@ Rules:
 - estimatedGrams: estimated portion weight in grams
 - calories: total calories for that portion
 - protein/carbs/fat/fiber: grams for that portion
+- glycemicIndex: the estimated Glycemic Index (GI) of this food on a scale of 0-100. Pure proteins/fats = 0, low GI foods < 55, medium 56-69, high >= 70. Be accurate based on nutritional science.
 - tags: relevant tags like "High Protein", "Low Carb", "High Fiber", etc. (max 3)
 - confidence: how confident you are in the estimation
 - notes: brief note if any assumptions were made`;

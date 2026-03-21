@@ -4,25 +4,83 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Path, Rect, G } from 'react-native-svg';
 import { router } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { logsAPI, waterAPI } from '../../services/api';
 import CalorieRing from '../../components/ui/CalorieRing';
 import { Colors } from '../../constants/colors';
+import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
 const today = () => new Date().toISOString().split('T')[0];
 
-const MEAL_META: Record<string, { icon: string; color: string; label: string }> = {
-  breakfast: { icon: '☀️', color: Colors.breakfast, label: 'Breakfast' },
-  lunch:     { icon: '🍽', color: Colors.lunch,     label: 'Lunch'     },
-  dinner:    { icon: '🌙', color: Colors.dinner,    label: 'Dinner'    },
-  snack:     { icon: '🍪', color: Colors.snack,     label: 'Snacks'    },
+// Meal icon components (SVG-based, no emojis)
+function SunIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={5} stroke={color} strokeWidth={1.8} />
+      <Path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ForkKnifeIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M17 2v6a4 4 0 01-4 4M17 2v20M21 2c0 4-2 8-4 8" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function MoonIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function CookieIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={10} stroke={color} strokeWidth={1.8} />
+      <Circle cx={8} cy={9} r={1} fill={color} />
+      <Circle cx={15} cy={8} r={1} fill={color} />
+      <Circle cx={10} cy={15} r={1} fill={color} />
+      <Circle cx={16} cy={14} r={1} fill={color} />
+    </Svg>
+  );
+}
+
+const MEAL_META: Record<string, { icon: (c: string) => JSX.Element; color: string; label: string }> = {
+  breakfast: { icon: (c) => <SunIcon color={c} />, color: Colors.breakfast, label: 'Breakfast' },
+  lunch:     { icon: (c) => <ForkKnifeIcon color={c} />, color: Colors.lunch, label: 'Lunch' },
+  dinner:    { icon: (c) => <MoonIcon color={c} />, color: Colors.dinner, label: 'Dinner' },
+  snack:     { icon: (c) => <CookieIcon color={c} />, color: Colors.snack, label: 'Snacks' },
 };
+
+// Water drop SVG icon
+function WaterDropIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" stroke="#60a5fa" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// Trash icon for water reset
+function TrashIcon() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" stroke="rgba(255,255,255,0.5)" strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
 
 export default function Dashboard() {
   const { user, todayLog, waterToday, setTodayLog, setWaterToday } = useStore();
   const [refreshing, setRefreshing] = useState(false);
-  const [streak] = useState(user?.streak || 0);
 
   const loadData = useCallback(async () => {
     try {
@@ -76,32 +134,29 @@ export default function Dashboard() {
       {/* Header */}
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 24, paddingVertical: 12,
+        paddingHorizontal: 24, paddingVertical: 14,
       }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{
-            width: 36, height: 36, borderRadius: 18,
-            backgroundColor: `${Colors.primary}20`,
-            borderWidth: 1, borderColor: `${Colors.primary}30`,
+            width: 34, height: 34, borderRadius: 17,
+            backgroundColor: '#1a1a1a',
+            borderWidth: 1, borderColor: '#2a2a2a',
             alignItems: 'center', justifyContent: 'center',
           }}>
-            <Text style={{ fontSize: 16 }}>⚡</Text>
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+              <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
           </View>
-          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 20, color: '#fff', letterSpacing: -0.5 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', letterSpacing: -0.5 }}>
             Sanctuary
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          {streak > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#171717', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}>
-              <Text style={{ fontSize: 12 }}>🔥</Text>
-              <Text style={{ color: '#f59e0b', fontFamily: 'Inter_700Bold', fontSize: 12 }}>{streak}</Text>
-            </View>
-          )}
-          <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_400Regular', fontSize: 13 }}>
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </Text>
-        </View>
+        <TouchableOpacity style={{ padding: 4 }}>
+          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+            <Circle cx={11} cy={11} r={8} stroke="#666" strokeWidth={1.8} />
+            <Path d="M21 21l-4.35-4.35" stroke="#666" strokeWidth={1.8} strokeLinecap="round" />
+          </Svg>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -113,7 +168,7 @@ export default function Dashboard() {
         <CalorieRing eaten={totals.calories} burned={0} goal={goal} />
 
         {/* Macros row */}
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
           {[
             { label: 'Protein', value: totals.protein, goalVal: proteinGoal, color: '#f97316' },
             { label: 'Carbs',   value: totals.carbs,   goalVal: carbGoal,    color: Colors.primary },
@@ -121,16 +176,24 @@ export default function Dashboard() {
           ].map((m) => {
             const pct = Math.min(1, m.value / (m.goalVal || 1));
             return (
-              <View key={m.label} style={{ flex: 1, backgroundColor: '#171717', padding: 14, borderRadius: 16, gap: 8 }}>
-                <Text style={{ color: '#a3a3a3', fontFamily: 'Inter_700Bold', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              <View key={m.label} style={{
+                flex: 1, backgroundColor: '#111', padding: 14, borderRadius: 14,
+                borderWidth: 1, borderColor: '#1a1a1a',
+              }}>
+                <Text style={{
+                  color: '#666', fontFamily: 'Inter_600SemiBold', fontSize: 9,
+                  letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8,
+                }}>
                   {m.label}
                 </Text>
-                <View style={{ height: 5, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4 }}>
-                  <View style={{ height: 5, backgroundColor: m.color, borderRadius: 4, width: `${pct * 100}%` }} />
+                <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+                  <View style={{ height: 4, backgroundColor: m.color, borderRadius: 2, width: `${pct * 100}%` }} />
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 13 }}>{Math.round(m.value)}g</Text>
-                  <Text style={{ color: `${m.color}99`, fontFamily: 'Inter_700Bold', fontSize: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                  <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 13 }}>
+                    {Math.round(m.value)}g
+                  </Text>
+                  <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>
                     {Math.round(pct * 100)}%
                   </Text>
                 </View>
@@ -140,14 +203,16 @@ export default function Dashboard() {
         </View>
 
         {/* Today's Log */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, marginBottom: 16 }}>
-          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 20, color: '#fff', letterSpacing: -0.3 }}>Today's Log</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, marginBottom: 14 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 19, color: '#fff', letterSpacing: -0.3 }}>
+            Today's Log
+          </Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/log')}>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: Colors.primary }}>View All</Text>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: Colors.primary }}>View All</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={{ gap: 10 }}>
+        <View>
           {Object.entries(byMeal).map(([mealKey, items]) => {
             const meta = MEAL_META[mealKey];
             const mealCals = items.reduce((s, i) => s + i.calories, 0);
@@ -160,40 +225,44 @@ export default function Dashboard() {
               <TouchableOpacity
                 key={mealKey}
                 onPress={() => router.push(`/(tabs)/log?meal=${mealKey}`)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
                 style={{
-                  backgroundColor: isEmpty ? `${meta.color}08` : '#171717',
-                  borderRadius: 16, padding: 16,
+                  backgroundColor: '#111',
+                  borderRadius: 14, padding: 16, marginBottom: 8,
                   flexDirection: 'row', alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: isEmpty ? `${meta.color}20` : 'transparent',
-                  borderLeftWidth: 4,
+                  borderColor: isEmpty ? '#1a1a1a' : '#1a1a1a',
+                  borderLeftWidth: 3,
                   borderLeftColor: meta.color,
                 }}
               >
                 <View style={{
-                  width: 44, height: 44, borderRadius: 12,
-                  backgroundColor: `${meta.color}15`,
+                  width: 42, height: 42, borderRadius: 12,
+                  backgroundColor: `${meta.color}12`,
                   alignItems: 'center', justifyContent: 'center', marginRight: 14,
                 }}>
-                  <Text style={{ fontSize: 20 }}>{meta.icon}</Text>
+                  {meta.icon(meta.color)}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: isEmpty ? `${Colors.onSurface}60` : '#fff' }}>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: isEmpty ? '#555' : '#fff' }}>
                     {meta.label}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#a3a3a3', marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#555', marginTop: 2 }} numberOfLines={1}>
                     {desc}
                   </Text>
                 </View>
                 {isEmpty ? (
-                  <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: meta.color, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: '#fff', fontSize: 18 }}>+</Text>
+                  <View style={{
+                    width: 28, height: 28, borderRadius: 14,
+                    backgroundColor: `${meta.color}20`, borderWidth: 1, borderColor: `${meta.color}40`,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Text style={{ color: meta.color, fontSize: 16, fontFamily: 'Inter_400Regular', marginTop: -1 }}>+</Text>
                   </View>
                 ) : (
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff' }}>{Math.round(mealCals)}</Text>
-                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#a3a3a3', letterSpacing: 1, textTransform: 'uppercase' }}>kcal</Text>
+                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: '#fff' }}>{Math.round(mealCals)}</Text>
+                    <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>kcal</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -201,56 +270,121 @@ export default function Dashboard() {
           })}
         </View>
 
+        {/* Daily Shifa Index Card */}
+        {todayLog?.mealShifa?.total && todayLog.mealShifa.total.shifaIndex > 0 && (() => {
+          const dayShifa = todayLog.mealShifa.total;
+          const rating = getShifaRating(dayShifa.shifaIndex);
+          const color = getShifaColor(rating);
+          const bgColor = getShifaBgColor(rating);
+          const label = getShifaLabel(rating);
+          return (
+            <View style={{
+              backgroundColor: bgColor, borderRadius: 16, padding: 18, marginTop: 14,
+              borderWidth: 1, borderColor: `${color}25`,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
+                    Daily Shifa Index
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                    <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color, letterSpacing: -1 }}>
+                      {dayShifa.shifaIndex}
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color }}>{label}</Text>
+                  </View>
+                </View>
+                <View style={{
+                  width: 42, height: 42, borderRadius: 21,
+                  backgroundColor: `${color}18`,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                    <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                </View>
+              </View>
+              {/* Per-meal breakdown */}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+                {['breakfast', 'lunch', 'dinner', 'snack'].map((m) => {
+                  const ms = todayLog?.mealShifa?.[m];
+                  if (!ms || ms.shifaIndex <= 0) return null;
+                  const mRating = getShifaRating(ms.shifaIndex);
+                  const mColor = getShifaColor(mRating);
+                  return (
+                    <View key={m} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 10, alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
+                        {m.slice(0, 4)}
+                      </Text>
+                      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: mColor }}>{ms.shifaIndex}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })()}
+
         {/* Hydration Card */}
-        <LinearGradient
-          colors={['#1d4ed8', '#1e3a8a']}
-          style={{ borderRadius: 20, padding: 20, marginTop: 20 }}
-        >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <Text style={{ fontSize: 28 }}>💧</Text>
+        <View style={{
+          backgroundColor: '#0c1a3d', borderRadius: 18, padding: 18, marginTop: 18,
+          borderWidth: 1, borderColor: '#1a2a5a',
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <WaterDropIcon />
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: '#fff' }}>
+                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 24, color: '#fff' }}>
                     {waterConsumed.toFixed(1)}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
                     / {waterGoal}L
                   </Text>
                 </View>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase' }}>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                   Hydration Goal
                 </Text>
               </View>
             </View>
-            <TouchableOpacity
-              onPress={() => addWater(250)}
-              style={{ backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}
-            >
-              <Text style={{ color: '#1d4ed8', fontFamily: 'Inter_700Bold', fontSize: 13 }}>+ 250ml</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <TouchableOpacity style={{ padding: 6 }}>
+                <TrashIcon />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => addWater(250)}
+                style={{
+                  backgroundColor: 'rgba(59,130,246,0.2)', borderRadius: 10,
+                  paddingHorizontal: 14, paddingVertical: 8,
+                  flexDirection: 'row', alignItems: 'center', gap: 4,
+                  borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)',
+                }}
+              >
+                <Text style={{ color: '#60a5fa', fontFamily: 'Inter_700Bold', fontSize: 12 }}>+ 250ml</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ height: 6, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 4, marginTop: 16 }}>
+          <View style={{ height: 4, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 2, marginTop: 14 }}>
             <View style={{
-              height: 6, backgroundColor: '#fff', borderRadius: 4,
+              height: 4, backgroundColor: '#3b82f6', borderRadius: 2,
               width: `${Math.min(100, (waterConsumed / waterGoal) * 100)}%`,
             }} />
           </View>
-        </LinearGradient>
+        </View>
 
-        {/* Glass macro summary */}
+        {/* Remaining macro summary */}
         <View style={{
-          marginTop: 16,
-          backgroundColor: 'rgba(23,23,23,0.9)',
-          borderRadius: 18, padding: 14,
+          marginTop: 12,
+          backgroundColor: '#111',
+          borderRadius: 14, padding: 14,
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+          borderWidth: 1, borderColor: '#1a1a1a',
         }}>
           <View>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#a3a3a3', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>
               Remaining
             </Text>
-            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 16, color: '#fff' }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: '#fff' }}>
               {Math.max(0, goal - Math.round(totals.calories)).toLocaleString()} kcal
             </Text>
           </View>
@@ -262,7 +396,7 @@ export default function Dashboard() {
             ].map((m) => (
               <View key={m.label} style={{ alignItems: 'center' }}>
                 <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: m.color }}>{m.value}g</Text>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 8, color: '#a3a3a3', letterSpacing: 1, textTransform: 'uppercase' }}>{m.label}</Text>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>{m.label}</Text>
               </View>
             ))}
           </View>

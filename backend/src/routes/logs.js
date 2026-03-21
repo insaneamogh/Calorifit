@@ -2,6 +2,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/auth');
 const { calculateItemNutrition } = require('../services/nutrition');
+const { estimateGI, calculateItemShifa, calculateMealShifa } = require('../services/shifa');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -17,10 +18,11 @@ router.get('/:date', auth, async (req, res) => {
       include: { items: { include: { food: true }, orderBy: { createdAt: 'asc' } } },
     });
 
-    if (!log) return res.json({ date: req.params.date, items: [], totals: zereTotals() });
+    if (!log) return res.json({ date: req.params.date, items: [], totals: zeroTotals(), mealShifa: {} });
 
     const totals = computeTotals(log.items);
-    res.json({ ...log, totals });
+    const mealShifa = computeMealShifaScores(log.items);
+    res.json({ ...log, totals, mealShifa });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -48,6 +50,25 @@ router.post('/item', auth, async (req, res) => {
     }
 
     const nutrition = calculateItemNutrition(food, grams);
+
+    // Compute GI and Shifa for this food
+    const gi = food.glycemicIndex ?? estimateGI(food.name, food.carbs, food.fiber);
+    const fiberForServing = (food.fiber || 0) * (grams / 100);
+    const { shifaIndex } = calculateItemShifa({
+      caloriesPer100g: food.calories,
+      proteinPer100g: food.protein,
+      fiberPer100g: food.fiber || 0,
+      gi,
+    });
+
+    // Update food record with GI if not already set
+    if (food.glycemicIndex === null || food.glycemicIndex === undefined) {
+      await prisma.food.update({
+        where: { id: foodId },
+        data: { glycemicIndex: gi, shifaIndex },
+      }).catch(() => {}); // non-critical
+    }
+
     const item = await prisma.foodLogItem.create({
       data: {
         logId: log.id,
@@ -58,6 +79,9 @@ router.post('/item', auth, async (req, res) => {
         protein: nutrition.protein,
         carbs: nutrition.carbs,
         fat: nutrition.fat,
+        fiber: fiberForServing,
+        gi,
+        shifaIndex,
         photoUrl,
         aiDetected: aiDetected || false,
       },
@@ -74,7 +98,7 @@ router.post('/item', auth, async (req, res) => {
 router.post('/item/ai', auth, async (req, res) => {
   try {
     const { date, meal, foods, photoUrl } = req.body;
-    // foods: [{ name, estimatedGrams, calories, protein, carbs, fat, fiber, tags }]
+    // foods: [{ name, estimatedGrams, calories, protein, carbs, fat, fiber, glycemicIndex, tags }]
     const logDate = new Date(date);
 
     let log = await prisma.foodLog.findUnique({
@@ -86,23 +110,51 @@ router.post('/item/ai', auth, async (req, res) => {
 
     const createdItems = [];
     for (const f of foods) {
+      // Compute per-100g values
+      const per100 = f.estimatedGrams > 0 ? (100 / f.estimatedGrams) : 1;
+      const calPer100 = f.calories * per100;
+      const protPer100 = f.protein * per100;
+      const carbPer100 = f.carbs * per100;
+      const fatPer100 = f.fat * per100;
+      const fiberPer100 = (f.fiber || 0) * per100;
+
+      // GI: prefer Gemini's estimate, fall back to our lookup table
+      const gi = (f.glycemicIndex != null && f.glycemicIndex >= 0)
+        ? f.glycemicIndex
+        : estimateGI(f.name, carbPer100, fiberPer100);
+
+      // Shifa Index (per 100g basis)
+      const { shifaIndex } = calculateItemShifa({
+        caloriesPer100g: calPer100,
+        proteinPer100g: protPer100,
+        fiberPer100g: fiberPer100,
+        gi,
+      });
+
       // Upsert the food record
       let food = await prisma.food.findFirst({
         where: { name: { equals: f.name, mode: 'insensitive' }, isCustom: false },
       });
       if (!food) {
-        const per100 = f.estimatedGrams > 0 ? (100 / f.estimatedGrams) : 1;
         food = await prisma.food.create({
           data: {
             name: f.name,
-            calories: f.calories * per100,
-            protein: f.protein * per100,
-            carbs: f.carbs * per100,
-            fat: f.fat * per100,
-            fiber: (f.fiber || 0) * per100,
+            calories: calPer100,
+            protein: protPer100,
+            carbs: carbPer100,
+            fat: fatPer100,
+            fiber: fiberPer100,
+            glycemicIndex: gi,
+            shifaIndex,
             tags: f.tags || [],
           },
         });
+      } else if (food.glycemicIndex === null || food.glycemicIndex === undefined) {
+        // Update existing food with GI if missing
+        await prisma.food.update({
+          where: { id: food.id },
+          data: { glycemicIndex: gi, shifaIndex },
+        }).catch(() => {});
       }
 
       const item = await prisma.foodLogItem.create({
@@ -115,6 +167,9 @@ router.post('/item/ai', auth, async (req, res) => {
           protein: f.protein,
           carbs: f.carbs,
           fat: f.fat,
+          fiber: f.fiber || 0,
+          gi,
+          shifaIndex,
           photoUrl,
           aiDetected: true,
         },
@@ -146,7 +201,7 @@ router.delete('/item/:id', auth, async (req, res) => {
   }
 });
 
-function zereTotals() {
+function zeroTotals() {
   return { calories: 0, protein: 0, carbs: 0, fat: 0 };
 }
 
@@ -158,8 +213,49 @@ function computeTotals(items) {
       carbs: acc.carbs + item.carbs,
       fat: acc.fat + item.fat,
     }),
-    zereTotals()
+    zeroTotals()
   );
+}
+
+/**
+ * Compute cumulative Shifa Index for each meal type.
+ * Uses SUMMED nutrients, not individual scores added up.
+ */
+function computeMealShifaScores(items) {
+  const meals = {};
+  const mealItems = {};
+
+  // Group items by meal
+  for (const item of items) {
+    const meal = item.meal.toLowerCase();
+    if (!mealItems[meal]) mealItems[meal] = [];
+    mealItems[meal].push({
+      calories: item.calories,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+      fiber: item.fiber || 0,
+      gi: item.gi || 0,
+    });
+  }
+
+  // Calculate cumulative Shifa for each meal
+  for (const [meal, items] of Object.entries(mealItems)) {
+    meals[meal] = calculateMealShifa(items);
+  }
+
+  // Also compute a day-level total
+  const allItems = items.map((item) => ({
+    calories: item.calories,
+    protein: item.protein,
+    carbs: item.carbs,
+    fat: item.fat,
+    fiber: item.fiber || 0,
+    gi: item.gi || 0,
+  }));
+  meals.total = calculateMealShifa(allItems);
+
+  return meals;
 }
 
 module.exports = router;
