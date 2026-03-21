@@ -10,6 +10,7 @@ import { useStore } from '../../store/useStore';
 import { logsAPI, waterAPI } from '../../services/api';
 import CalorieRing from '../../components/ui/CalorieRing';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -80,6 +81,7 @@ function TrashIcon() {
 
 export default function Dashboard() {
   const { user, todayLog, waterToday, setTodayLog, setWaterToday } = useStore();
+  const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -130,24 +132,25 @@ export default function Dashboard() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 24, paddingVertical: 14,
       }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{
             width: 34, height: 34, borderRadius: 17,
-            backgroundColor: '#1a1a1a',
-            borderWidth: 1, borderColor: '#2a2a2a',
+            backgroundColor: theme.surface2,
+            borderWidth: 1, borderColor: theme.border2,
             alignItems: 'center', justifyContent: 'center',
+            marginRight: 10,
           }}>
             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
               <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </View>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', letterSpacing: -0.5 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, letterSpacing: -0.5 }}>
             Sanctuary
           </Text>
         </View>
@@ -168,32 +171,33 @@ export default function Dashboard() {
         <CalorieRing eaten={totals.calories} burned={0} goal={goal} />
 
         {/* Macros row */}
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+        <View style={{ flexDirection: 'row', marginTop: 4 }}>
           {[
             { label: 'Protein', value: totals.protein, goalVal: proteinGoal, color: '#f97316' },
             { label: 'Carbs',   value: totals.carbs,   goalVal: carbGoal,    color: Colors.primary },
             { label: 'Fats',    value: totals.fat,     goalVal: fatGoal,     color: Colors.tertiary },
-          ].map((m) => {
+          ].map((m, idx) => {
             const pct = Math.min(1, m.value / (m.goalVal || 1));
             return (
               <View key={m.label} style={{
-                flex: 1, backgroundColor: '#111', padding: 14, borderRadius: 14,
-                borderWidth: 1, borderColor: '#1a1a1a',
+                flex: 1, backgroundColor: theme.surface, padding: 14, borderRadius: 14,
+                borderWidth: 1, borderColor: theme.border,
+                marginRight: idx < 2 ? 10 : 0,
               }}>
                 <Text style={{
-                  color: '#666', fontFamily: 'Inter_600SemiBold', fontSize: 9,
+                  color: theme.textSecondary, fontFamily: 'Inter_600SemiBold', fontSize: 9,
                   letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8,
                 }}>
                   {m.label}
                 </Text>
-                <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+                <View style={{ height: 4, backgroundColor: theme.surface2, borderRadius: 2 }}>
                   <View style={{ height: 4, backgroundColor: m.color, borderRadius: 2, width: `${pct * 100}%` }} />
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                  <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 13 }}>
+                  <Text style={{ color: theme.text, fontFamily: 'Inter_700Bold', fontSize: 13 }}>
                     {Math.round(m.value)}g
                   </Text>
-                  <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>
+                  <Text style={{ color: theme.textTertiary, fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>
                     {Math.round(pct * 100)}%
                   </Text>
                 </View>
@@ -204,7 +208,7 @@ export default function Dashboard() {
 
         {/* Today's Log */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, marginBottom: 14 }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 19, color: '#fff', letterSpacing: -0.3 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 19, color: theme.text, letterSpacing: -0.3 }}>
             Today's Log
           </Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/log')}>
@@ -227,11 +231,11 @@ export default function Dashboard() {
                 onPress={() => router.push(`/(tabs)/log?meal=${mealKey}`)}
                 activeOpacity={0.7}
                 style={{
-                  backgroundColor: '#111',
+                  backgroundColor: theme.surface,
                   borderRadius: 14, padding: 16, marginBottom: 8,
                   flexDirection: 'row', alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: isEmpty ? '#1a1a1a' : '#1a1a1a',
+                  borderColor: theme.border,
                   borderLeftWidth: 3,
                   borderLeftColor: meta.color,
                 }}
@@ -244,10 +248,10 @@ export default function Dashboard() {
                   {meta.icon(meta.color)}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: isEmpty ? '#555' : '#fff' }}>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: isEmpty ? theme.textTertiary : theme.text }}>
                     {meta.label}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#555', marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textTertiary, marginTop: 2 }} numberOfLines={1}>
                     {desc}
                   </Text>
                 </View>
@@ -261,8 +265,8 @@ export default function Dashboard() {
                   </View>
                 ) : (
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: '#fff' }}>{Math.round(mealCals)}</Text>
-                    <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>kcal</Text>
+                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: theme.text }}>{Math.round(mealCals)}</Text>
+                    <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>kcal</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -375,28 +379,28 @@ export default function Dashboard() {
         {/* Remaining macro summary */}
         <View style={{
           marginTop: 12,
-          backgroundColor: '#111',
+          backgroundColor: theme.surface,
           borderRadius: 14, padding: 14,
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-          borderWidth: 1, borderColor: '#1a1a1a',
+          borderWidth: 1, borderColor: theme.border,
         }}>
           <View>
-            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>
               Remaining
             </Text>
-            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: '#fff' }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: theme.text }}>
               {Math.max(0, goal - Math.round(totals.calories)).toLocaleString()} kcal
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 20 }}>
+          <View style={{ flexDirection: 'row' }}>
             {[
               { label: 'Prot', value: Math.max(0, proteinGoal - Math.round(totals.protein)), color: '#f97316' },
               { label: 'Carb', value: Math.max(0, carbGoal - Math.round(totals.carbs)),   color: Colors.primary },
               { label: 'Fat',  value: Math.max(0, fatGoal - Math.round(totals.fat)),      color: Colors.tertiary },
-            ].map((m) => (
-              <View key={m.label} style={{ alignItems: 'center' }}>
+            ].map((m, idx) => (
+              <View key={m.label} style={{ alignItems: 'center', marginLeft: idx > 0 ? 20 : 0 }}>
                 <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: m.color }}>{m.value}g</Text>
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>{m.label}</Text>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>{m.label}</Text>
               </View>
             ))}
           </View>

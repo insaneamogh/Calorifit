@@ -10,6 +10,7 @@ import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 import { router } from 'expo-router';
 import { aiAPI, logsAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { computeShifaFromScan, computeMealShifa, getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -84,6 +85,7 @@ function BarcodeIcon() {
 }
 
 export default function ScanScreen() {
+  const { theme } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<ScanMode>('camera');
   const [scanning, setScanning] = useState(false);
@@ -179,18 +181,18 @@ export default function ScanScreen() {
 
   if (!permission?.granted) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <View style={{
-          width: 64, height: 64, borderRadius: 32, backgroundColor: '#111',
+          width: 64, height: 64, borderRadius: 32, backgroundColor: theme.surface,
           alignItems: 'center', justifyContent: 'center', marginBottom: 24,
-          borderWidth: 1, borderColor: '#1a1a1a',
+          borderWidth: 1, borderColor: theme.border,
         }}>
           <CameraIcon />
         </View>
-        <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: '#fff', textAlign: 'center', marginBottom: 10 }}>
+        <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: theme.text, textAlign: 'center', marginBottom: 10 }}>
           Camera Access Needed
         </Text>
-        <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', textAlign: 'center', marginBottom: 32, lineHeight: 22 }}>
+        <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, textAlign: 'center', marginBottom: 32, lineHeight: 22 }}>
           Allow camera access to use AI food scanning.
         </Text>
         <TouchableOpacity
@@ -298,16 +300,16 @@ export default function ScanScreen() {
               </View>
             ) : !barcodeScanned ? (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                {/* Scan frame corners */}
-                <View style={{ width: 240, height: 160, position: 'relative' }}>
+                {/* 4 corner brackets */}
+                <View style={{ width: 260, height: 160, position: 'relative' }}>
                   {/* Top-left */}
-                  <View style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTopWidth: 3, borderLeftWidth: 3, borderColor: Colors.primary, borderTopLeftRadius: 8 }} />
+                  <View style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTopWidth: 3, borderLeftWidth: 3, borderColor: Colors.primary, borderRadius: 3 }} />
                   {/* Top-right */}
-                  <View style={{ position: 'absolute', top: 0, right: 0, width: 30, height: 30, borderTopWidth: 3, borderRightWidth: 3, borderColor: Colors.primary, borderTopRightRadius: 8 }} />
+                  <View style={{ position: 'absolute', top: 0, right: 0, width: 30, height: 30, borderTopWidth: 3, borderRightWidth: 3, borderColor: Colors.primary, borderRadius: 3 }} />
                   {/* Bottom-left */}
-                  <View style={{ position: 'absolute', bottom: 0, left: 0, width: 30, height: 30, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: Colors.primary, borderBottomLeftRadius: 8 }} />
+                  <View style={{ position: 'absolute', bottom: 0, left: 0, width: 30, height: 30, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: Colors.primary, borderRadius: 3 }} />
                   {/* Bottom-right */}
-                  <View style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottomWidth: 3, borderRightWidth: 3, borderColor: Colors.primary, borderBottomRightRadius: 8 }} />
+                  <View style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottomWidth: 3, borderRightWidth: 3, borderColor: Colors.primary, borderRadius: 3 }} />
                 </View>
                 <Text style={{ color: '#aaa', fontFamily: 'Inter_500Medium', marginTop: 20, fontSize: 14 }}>
                   Align the barcode within the frame.
@@ -317,11 +319,11 @@ export default function ScanScreen() {
           </View>
         </CameraView>
       ) : (
-        <View style={{ flex: 1, paddingTop: 130, paddingHorizontal: 24 }}>
-          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: '#fff', marginBottom: 8 }}>
+        <View style={{ flex: 1, paddingTop: 130, paddingHorizontal: 24, backgroundColor: theme.bg }}>
+          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: theme.text, marginBottom: 8 }}>
             Describe your meal
           </Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 14, marginBottom: 24, lineHeight: 22 }}>
+          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24, lineHeight: 22 }}>
             Tell me what you ate and I'll calculate the nutrition.
           </Text>
           <TextInput
@@ -332,11 +334,11 @@ export default function ScanScreen() {
             multiline
             numberOfLines={4}
             style={{
-              backgroundColor: '#111', borderRadius: 14,
-              padding: 18, color: '#fff',
+              backgroundColor: theme.surface, borderRadius: 14,
+              padding: 18, color: theme.text,
               fontFamily: 'Inter_400Regular', fontSize: 15,
               textAlignVertical: 'top', minHeight: 120,
-              borderWidth: 1, borderColor: '#1a1a1a',
+              borderWidth: 1, borderColor: theme.border,
             }}
           />
         </View>
@@ -347,13 +349,35 @@ export default function ScanScreen() {
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 48, paddingHorizontal: 24 }}>
           {mode === 'barcode' ? (
             <TouchableOpacity
+              onPress={() => {
+                Alert.prompt(
+                  'Enter Barcode',
+                  'Type the barcode number manually',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Search',
+                      onPress: (value) => {
+                        if (value && value.trim()) {
+                          handleBarcodeScanned({ type: 'manual', data: value.trim() });
+                        }
+                      },
+                    },
+                  ],
+                  'plain-text',
+                  '',
+                  'number-pad'
+                );
+              }}
               style={{
-                backgroundColor: '#111', borderRadius: 14, paddingVertical: 16,
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                borderWidth: 1, borderColor: '#1a1a1a',
+                backgroundColor: theme.surface, borderRadius: 14, paddingVertical: 16,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1, borderColor: theme.border,
               }}
             >
-              <BarcodeIcon />
+              <View style={{ marginRight: 8 }}>
+                <BarcodeIcon />
+              </View>
               <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#fff', fontSize: 14 }}>Enter Barcode Manually</Text>
             </TouchableOpacity>
           ) : mode === 'camera' ? (

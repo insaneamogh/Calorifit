@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Alert, ActivityIndicator, Modal, Pressable,
+  Alert, ActivityIndicator, Modal, Pressable, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { userAPI, progressAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 const ACTIVITY_OPTIONS = [
   { value: 'sedentary', label: 'Sedentary', desc: 'Little to no exercise' },
@@ -110,6 +111,7 @@ function ChevronRight() {
 
 export default function ProfileScreen() {
   const { user, setUser, logout } = useStore();
+  const { theme, isDark, toggleTheme } = useTheme();
   const [saving, setSaving] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [loggingWeight, setLoggingWeight] = useState(false);
@@ -165,20 +167,20 @@ export default function ProfileScreen() {
   const goalDesc = GOAL_OPTIONS.find(g => g.value === user.goal)?.desc || '';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
 
         {/* Header */}
         <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2a2a2a' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: theme.surface2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.border2, marginRight: 10 }}>
                 <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                   <Circle cx={12} cy={8} r={4} stroke="#888" strokeWidth={1.8} />
                   <Path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="#888" strokeWidth={1.8} strokeLinecap="round" />
                 </Svg>
               </View>
-              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff' }}>Sanctuary</Text>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text }}>Sanctuary</Text>
             </View>
             <TouchableOpacity style={{ padding: 4 }}>
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
@@ -188,15 +190,15 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: '#fff', letterSpacing: -0.5 }}>
+          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: theme.text, letterSpacing: -0.5 }}>
             {user.name}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            <View style={{ backgroundColor: '#1a1a1a', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#888', fontSize: 12 }}>{user.currentWeight} kg</Text>
+          <View style={{ flexDirection: 'row', marginTop: 8 }}>
+            <View style={{ backgroundColor: theme.surface2, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: theme.border2, marginRight: 8 }}>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textSecondary, fontSize: 12 }}>{user.currentWeight} kg</Text>
             </View>
-            <View style={{ backgroundColor: '#1a1a1a', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#888', fontSize: 12 }}>{user.heightCm} cm</Text>
+            <View style={{ backgroundColor: theme.surface2, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: theme.border2 }}>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textSecondary, fontSize: 12 }}>{user.heightCm} cm</Text>
             </View>
           </View>
         </View>
@@ -204,7 +206,7 @@ export default function ProfileScreen() {
         {/* Daily Goals Section */}
         <View style={{ marginHorizontal: 20, marginTop: 20, marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' }}>
               Daily Goals
             </Text>
             <TouchableOpacity onPress={() => { setTempCal(String(user.dailyCalGoal)); setCalModal(true); }}>
@@ -216,8 +218,8 @@ export default function ProfileScreen() {
           <TouchableOpacity
             onPress={() => { setTempCal(String(user.dailyCalGoal)); setCalModal(true); }}
             style={{
-              backgroundColor: '#111', borderRadius: 16, padding: 20, marginBottom: 10,
-              borderWidth: 1, borderColor: '#1a1a1a',
+              backgroundColor: theme.surface, borderRadius: 16, padding: 20, marginBottom: 10,
+              borderWidth: 1, borderColor: theme.border,
             }}
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -229,12 +231,12 @@ export default function ProfileScreen() {
                 }}>
                   <FireIcon color={Colors.primary} />
                 </View>
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Calories</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: '#fff', letterSpacing: -1 }}>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Calories</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: theme.text, letterSpacing: -1, marginRight: 4 }}>
                     {user.dailyCalGoal.toLocaleString()}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#555' }}>kcal</Text>
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: theme.textTertiary }}>kcal</Text>
                 </View>
               </View>
               <PencilIcon />
@@ -243,8 +245,8 @@ export default function ProfileScreen() {
 
           {/* Protein card */}
           <View style={{
-            backgroundColor: '#111', borderRadius: 16, padding: 20, marginBottom: 10,
-            borderWidth: 1, borderColor: '#1a1a1a',
+            backgroundColor: theme.surface, borderRadius: 16, padding: 20, marginBottom: 10,
+            borderWidth: 1, borderColor: theme.border,
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View>
@@ -255,12 +257,12 @@ export default function ProfileScreen() {
                 }}>
                   <ProteinIcon color={Colors.tertiary} />
                 </View>
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Protein</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: '#fff', letterSpacing: -1 }}>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Protein</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 32, color: theme.text, letterSpacing: -1, marginRight: 2 }}>
                     {user.dailyProteinGoal}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#555' }}>g</Text>
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: theme.textTertiary }}>g</Text>
                 </View>
               </View>
               <PencilIcon />
@@ -268,30 +270,34 @@ export default function ProfileScreen() {
           </View>
 
           {/* Carbs & Fats compact */}
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row' }}>
             <View style={{
-              flex: 1, backgroundColor: '#111', borderRadius: 14, padding: 16,
-              borderWidth: 1, borderColor: '#1a1a1a',
+              flex: 1, backgroundColor: theme.surface, borderRadius: 14, padding: 16,
+              borderWidth: 1, borderColor: theme.border, marginRight: 10,
             }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <CarbIcon color="#888" />
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Carbs</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <View style={{ marginRight: 6 }}>
+                  <CarbIcon color="#888" />
+                </View>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Carbs</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: '#fff' }}>{user.dailyCarbGoal}g</Text>
+                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: theme.text }}>{user.dailyCarbGoal}g</Text>
                 <PencilIcon />
               </View>
             </View>
             <View style={{
-              flex: 1, backgroundColor: '#111', borderRadius: 14, padding: 16,
-              borderWidth: 1, borderColor: '#1a1a1a',
+              flex: 1, backgroundColor: theme.surface, borderRadius: 14, padding: 16,
+              borderWidth: 1, borderColor: theme.border,
             }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <FatIcon color="#888" />
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Fats</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <View style={{ marginRight: 6 }}>
+                  <FatIcon color="#888" />
+                </View>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Fats</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: '#fff' }}>{user.dailyFatGoal}g</Text>
+                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: theme.text }}>{user.dailyFatGoal}g</Text>
                 <PencilIcon />
               </View>
             </View>
@@ -300,40 +306,40 @@ export default function ProfileScreen() {
 
         {/* Health Metrics */}
         <View style={{ marginHorizontal: 20, marginBottom: 12, marginTop: 8 }}>
-          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
             Health Metrics
           </Text>
 
           {/* Starting Weight */}
           <View style={{
-            backgroundColor: '#111', borderRadius: 14, padding: 18, marginBottom: 8,
-            borderWidth: 1, borderColor: '#1a1a1a',
+            backgroundColor: theme.surface, borderRadius: 14, padding: 18, marginBottom: 8,
+            borderWidth: 1, borderColor: theme.border,
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Starting Weight</Text>
-              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: '#555' }}>Jan 12</Text>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Starting Weight</Text>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>Jan 12</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: '#fff' }}>{user.currentWeight}</Text>
-              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#555' }}>kg</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: theme.text, marginRight: 4 }}>{user.currentWeight}</Text>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: theme.textTertiary }}>kg</Text>
             </View>
           </View>
 
           {/* Current Weight - highlighted */}
           <View style={{
-            backgroundColor: '#0c1a3d', borderRadius: 14, padding: 18, marginBottom: 8,
-            borderWidth: 1, borderColor: '#1a2a5a',
+            backgroundColor: theme.primaryBg, borderRadius: 14, padding: 18, marginBottom: 8,
+            borderWidth: 1, borderColor: theme.primaryBorder,
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Current Weight</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(59,130,246,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: Colors.primary }} />
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Current Weight</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59,130,246,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: Colors.primary, marginRight: 4 }} />
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary }}>Active</Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: '#fff' }}>{user.currentWeight}</Text>
-              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#555' }}>kg</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: theme.text, marginRight: 4 }}>{user.currentWeight}</Text>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: theme.textTertiary }}>kg</Text>
             </View>
           </View>
 
@@ -341,20 +347,20 @@ export default function ProfileScreen() {
           <TouchableOpacity
             onPress={() => { setTempGoalWeight(String(user.goalWeight)); setGoalWeightModal(true); }}
             style={{
-              backgroundColor: '#111', borderRadius: 14, padding: 18, marginBottom: 8,
-              borderWidth: 1, borderColor: '#1a1a1a',
+              backgroundColor: theme.surface, borderRadius: 14, padding: 18, marginBottom: 8,
+              borderWidth: 1, borderColor: theme.border,
             }}
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Goal Weight</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: Colors.tertiary }} />
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Goal Weight</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: Colors.tertiary, marginRight: 4 }} />
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.tertiary }}>Target</Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
-              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: '#fff' }}>{user.goalWeight}</Text>
-              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#555' }}>kg</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 10 }}>
+              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: theme.text, marginRight: 4 }}>{user.goalWeight}</Text>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: theme.textTertiary }}>kg</Text>
             </View>
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.tertiary }}>
               {weightToGoal}kg to go
@@ -367,10 +373,25 @@ export default function ProfileScreen() {
 
         {/* Account Settings */}
         <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
-          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
             Account Settings
           </Text>
-          <View style={{ backgroundColor: '#111', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#1a1a1a' }}>
+          <View style={{ backgroundColor: theme.surface, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+            {/* Appearance toggle row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.text, fontSize: 14 }}>Appearance</Text>
+                <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                  {isDark ? 'Dark Mode' : 'Light Mode'}
+                </Text>
+              </View>
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: '#d1d5db', true: Colors.primary }}
+                thumbColor="#fff"
+              />
+            </View>
             {[
               { icon: <ActivityLevelIcon />, label: 'Activity Level', value: `${activityLabel} (${activityDesc})`, onPress: () => setActivityModal(true) },
               { icon: <GoalIcon />, label: 'Weekly Goal', value: `${goalLabel} ${goalDesc}`, onPress: () => setGoalModal(true) },
@@ -382,13 +403,13 @@ export default function ProfileScreen() {
                 onPress={s.onPress}
                 style={{
                   flexDirection: 'row', alignItems: 'center', padding: 16,
-                  borderBottomWidth: i < 3 ? 1 : 0, borderBottomColor: '#1a1a1a',
+                  borderBottomWidth: i < 3 ? 1 : 0, borderBottomColor: theme.border,
                 }}
               >
                 <View style={{ marginRight: 14 }}>{s.icon}</View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#fff', fontSize: 14 }}>{s.label}</Text>
-                  <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12, marginTop: 2 }} numberOfLines={1}>{s.value}</Text>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.text, fontSize: 14 }}>{s.label}</Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{s.value}</Text>
                 </View>
                 <ChevronRight />
               </TouchableOpacity>
@@ -412,20 +433,20 @@ export default function ProfileScreen() {
       {/* Activity Level Modal */}
       <Modal visible={activityModal} transparent animationType="slide">
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setActivityModal(false)} />
-        <View style={{ backgroundColor: '#0a0a0a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', marginBottom: 20 }}>Activity Level</Text>
+        <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 20 }}>Activity Level</Text>
           {ACTIVITY_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.value}
               onPress={async () => { setActivityModal(false); await updateSetting({ activityLevel: opt.value }); }}
               style={{
                 flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+                paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border,
               }}
             >
               <View>
-                <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 15 }}>{opt.label}</Text>
-                <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12, marginTop: 2 }}>{opt.desc}</Text>
+                <Text style={{ fontFamily: 'Inter_700Bold', color: theme.text, fontSize: 15 }}>{opt.label}</Text>
+                <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12, marginTop: 2 }}>{opt.desc}</Text>
               </View>
               {user.activityLevel === opt.value && (
                 <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' }}>
@@ -442,20 +463,20 @@ export default function ProfileScreen() {
       {/* Weekly Goal Modal */}
       <Modal visible={goalModal} transparent animationType="slide">
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setGoalModal(false)} />
-        <View style={{ backgroundColor: '#0a0a0a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', marginBottom: 20 }}>Weekly Goal</Text>
+        <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 20 }}>Weekly Goal</Text>
           {GOAL_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.value}
               onPress={async () => { setGoalModal(false); await updateSetting({ goal: opt.value }); }}
               style={{
                 flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+                paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border,
               }}
             >
               <View>
-                <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 15 }}>{opt.label}</Text>
-                <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12, marginTop: 2 }}>{opt.desc}</Text>
+                <Text style={{ fontFamily: 'Inter_700Bold', color: theme.text, fontSize: 15 }}>{opt.label}</Text>
+                <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12, marginTop: 2 }}>{opt.desc}</Text>
               </View>
               {user.goal === opt.value && (
                 <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' }}>
@@ -472,10 +493,10 @@ export default function ProfileScreen() {
       {/* Calorie Goal Modal */}
       <Modal visible={calModal} transparent animationType="slide">
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setCalModal(false)} />
-        <View style={{ backgroundColor: '#0a0a0a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', marginBottom: 6 }}>Daily Calorie Goal</Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 14, marginBottom: 24 }}>Set a custom calorie target</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a', marginBottom: 20 }}>
+        <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Daily Calorie Goal</Text>
+          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>Set a custom calorie target</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 20 }}>
             <TextInput
               value={tempCal}
               onChangeText={setTempCal}
@@ -484,7 +505,7 @@ export default function ProfileScreen() {
               style={{ flex: 1, padding: 18, color: Colors.primary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
             />
           </View>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>kcal / day</Text>
+          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, textAlign: 'center', marginBottom: 24 }}>kcal / day</Text>
           <TouchableOpacity
             onPress={async () => {
               const cal = Number(tempCal);
@@ -505,10 +526,10 @@ export default function ProfileScreen() {
       {/* Goal Weight Modal */}
       <Modal visible={goalWeightModal} transparent animationType="slide">
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setGoalWeightModal(false)} />
-        <View style={{ backgroundColor: '#0a0a0a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', marginBottom: 6 }}>Goal Weight</Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 14, marginBottom: 24 }}>What is your target weight?</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a', marginBottom: 24 }}>
+        <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Goal Weight</Text>
+          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>What is your target weight?</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 24 }}>
             <TextInput
               value={tempGoalWeight}
               onChangeText={setTempGoalWeight}
@@ -516,7 +537,7 @@ export default function ProfileScreen() {
               autoFocus
               style={{ flex: 1, padding: 18, color: Colors.tertiary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
             />
-            <Text style={{ color: '#555', paddingRight: 18, fontFamily: 'Inter_500Medium' }}>kg</Text>
+            <Text style={{ color: theme.textTertiary, paddingRight: 18, fontFamily: 'Inter_500Medium' }}>kg</Text>
           </View>
           <TouchableOpacity
             onPress={async () => {

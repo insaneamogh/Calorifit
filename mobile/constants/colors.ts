@@ -24,3 +24,10 @@ export const Colors = {
   dinner: '#a855f7',
   snack: '#f97316',
 };
+
+export const ThemeColors = {
+  breakfast: '#f59e0b',
+  lunch: '#10b981',
+  dinner: '#a855f7',
+  snack: '#f97316',
+};

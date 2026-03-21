@@ -1,333 +1,317 @@
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Polyline, Circle, Rect, G, Text as SvgText, Path, Defs, LinearGradient, Stop, Line } from 'react-native-svg';
+import Svg, { Polyline, Circle, Rect, G, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Line } from 'react-native-svg';
 import { progressAPI } from '../../services/api';
 import { useStore } from '../../store/useStore';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
-const CHART_WIDTH = width - 64;
-
-// SVG Icons
-function FireIcon() {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2c.5 4-2 6-2 10a4 4 0 008 0c0-4-2-6-2-10" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={3} stroke="#666" strokeWidth={1.8} />
-      <Path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="#666" strokeWidth={1.5} />
-    </Svg>
-  );
-}
-
-function WaterIcon() {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" stroke="#60a5fa" strokeWidth={1.8} />
-    </Svg>
-  );
-}
-
-function MoonSmallIcon() {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="#818cf8" strokeWidth={1.8} />
-    </Svg>
-  );
-}
-
-function ActivityIcon() {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#f87171" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
+const CHART_W = width - 48;
 
 export default function StatsScreen() {
   const { user } = useStore();
+  const { theme } = useTheme();
   const [stats, setStats] = useState<any>(null);
   const [weightData, setWeightData] = useState<any[]>([]);
   const [caloriesData, setCaloriesData] = useState<any[]>([]);
-  const [period, setPeriod] = useState<'Day' | 'Week' | 'Month'>('Week');
+  const [period, setPeriod] = useState<7 | 30>(7);
   const [refreshing, setRefreshing] = useState(false);
-
-  const periodDays = period === 'Day' ? 1 : period === 'Week' ? 7 : 30;
 
   const load = useCallback(async () => {
     try {
       const [statsRes, weightRes, calRes] = await Promise.all([
         progressAPI.getStats(),
         progressAPI.getWeight(30),
-        progressAPI.getCalories(periodDays),
+        progressAPI.getCalories(period),
       ]);
       setStats(statsRes.data);
-      setWeightData(weightRes.data);
-      setCaloriesData(calRes.data.data || []);
-    } catch (err: any) {
-      console.error(err.message);
-    }
-  }, [periodDays]);
+      setWeightData(weightRes.data || []);
+      setCaloriesData(calRes.data?.data || []);
+    } catch (e) { console.log(e); }
+  }, [period]);
 
-  useEffect(() => { load(); }, [periodDays]);
-
+  useEffect(() => { load(); }, [period]);
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  // Build weight sparkline
-  const buildWeightLine = () => {
-    if (weightData.length < 2) return null;
-    const weights = weightData.map((d) => d.weightKg);
-    const min = Math.min(...weights) - 0.5;
-    const max = Math.max(...weights) + 0.5;
-    const range = max - min || 1;
-    const H = 80;
-    const W = CHART_WIDTH;
-    const pts = weightData.map((d, i) => {
-      const x = (i / (weightData.length - 1)) * W;
-      const y = H - ((d.weightKg - min) / range) * H;
-      return `${x},${y}`;
-    });
-    return pts.join(' ');
-  };
-
-  // Build calories bars
-  const barData = caloriesData.slice(-7);
-  const maxCal = Math.max(...barData.map((d) => d.calories), user?.dailyCalGoal || 2000);
-  const barW = CHART_WIDTH / Math.max(barData.length, 1) - 8;
-  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-
-  // Avg macros
+  const streak = stats?.streak || 0;
+  const currentWeight = stats?.currentWeight || user?.currentWeight || 0;
+  const totalLost = stats?.totalLost || 0;
   const avgCals = stats?.avgCalories || 0;
-  const weeklyChange = stats?.totalLost ? ((stats.totalLost / (stats.currentWeight || 80)) * 100).toFixed(0) : 0;
+
+  // Weight chart
+  const wPts = (() => {
+    if (weightData.length < 2) return null;
+    const wArr = weightData.map(d => d.weightKg);
+    const mn = Math.min(...wArr) - 1;
+    const mx = Math.max(...wArr) + 1;
+    const rng = mx - mn || 1;
+    const H = 70;
+    return weightData.map((d, i) => `${(i / (weightData.length - 1)) * CHART_W},${H - ((d.weightKg - mn) / rng) * H}`).join(' ');
+  })();
+
+  // Bar chart
+  const bars = caloriesData.slice(-7);
+  const maxCal = Math.max(...bars.map(d => d.calories), user?.dailyCalGoal || 2000, 100);
+  const barSlot = CHART_W / Math.max(bars.length, 7);
+  const barW = barSlot * 0.55;
+
+  const bioMarkers = [
+    { label: 'Resting HR', value: '62', unit: 'bpm', sub: '3 bpm', color: theme.red },
+    { label: 'Active Cal', value: '840', unit: '', sub: '+18%', color: Colors.primary },
+    { label: 'Body Fat', value: '18.2', unit: '%', sub: '-0.5%', color: theme.green },
+    { label: 'Hydration', value: '2.4L', unit: '', sub: 'Avg', color: '#60a5fa' },
+  ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={{ paddingHorizontal: 24, paddingTop: 14, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center' }}>
-              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 14, paddingBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: theme.primaryBg, borderWidth: 1, borderColor: theme.primaryBorder, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={Colors.primary} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
-            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: Colors.primary, letterSpacing: -0.3 }}>
-              Kinetic Sanctuary
-            </Text>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: Colors.primary, letterSpacing: -0.3 }}>Kinetic Sanctuary</Text>
           </View>
           <TouchableOpacity style={{ padding: 4 }}>
-            <SettingsIcon />
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+              <Circle cx={12} cy={12} r={3} stroke={theme.textSecondary} strokeWidth={1.8} />
+              <Path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke={theme.textSecondary} strokeWidth={1.5} />
+            </Svg>
           </TouchableOpacity>
         </View>
 
-        {/* Consistency Peak Card */}
-        {stats && (
-          <View style={{
-            marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', marginBottom: 14,
-          }}>
-            <View style={{
-              backgroundColor: '#0a1a5a', padding: 24, borderRadius: 20,
-              borderWidth: 1, borderColor: '#1a2a6a',
-            }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#60a5fa', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-                Consistency Peak
-              </Text>
-              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 44, color: '#fff', letterSpacing: -2, marginBottom: 4 }}>
-                {stats.streak} Days
-              </Text>
-              <Text style={{ fontFamily: 'Inter_400Regular', color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 20 }}>
-                You're in the top 2% of the{'\n'}sanctuary members this month.
-              </Text>
-              <View style={{
-                position: 'absolute', bottom: 20, right: 20,
-                width: 48, height: 48, borderRadius: 24,
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                <FireIcon />
-              </View>
+        {/* Performance Hub */}
+        <View style={{ paddingHorizontal: 24, marginBottom: 16, marginTop: 8 }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textSecondary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Performance Hub</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: theme.text, letterSpacing: -0.5 }}>Deep Analytics</Text>
+            <View style={{ flexDirection: 'row', backgroundColor: theme.surface, borderRadius: 20, padding: 3, borderWidth: 1, borderColor: theme.border }}>
+              {([7, 30] as const).map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => setPeriod(p)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 17, backgroundColor: period === p ? Colors.primary : 'transparent' }}
+                >
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: period === p ? '#fff' : theme.textSecondary }}>
+                    {p} Days
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
-        )}
+        </View>
 
-        {/* Weight Dynamics Card */}
-        {weightData.length > 0 && stats && (
-          <View style={{
-            marginHorizontal: 20, backgroundColor: '#111', borderRadius: 18, padding: 20, marginBottom: 14,
-            borderWidth: 1, borderColor: '#1a1a1a',
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <View>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff' }}>Weight Dynamics</Text>
-                <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12, marginTop: 2 }}>
-                  Last 30 Days Trend
-                </Text>
+        {/* Active Streak */}
+        <View style={{ marginHorizontal: 20, backgroundColor: theme.primaryBg, borderRadius: 18, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: theme.primaryBorder }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <View style={{ backgroundColor: Colors.primary, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginRight: 8 }}>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 9, color: '#fff', letterSpacing: 1 }}>ACTIVE STREAK</Text>
+                </View>
               </View>
-              {stats.totalLost !== 0 && (
-                <View style={{
-                  backgroundColor: stats.totalLost > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(248,113,113,0.15)',
-                  paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
-                }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: stats.totalLost > 0 ? Colors.tertiary : '#f87171' }}>
-                    {stats.totalLost > 0 ? '-' : '+'}{Math.abs(stats.totalLost)}kg
+              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 52, color: theme.text, letterSpacing: -2, lineHeight: 56 }}>{streak}</Text>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: theme.textSecondary, marginTop: 2 }}>Days of consistency</Text>
+            </View>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(59,130,246,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                <Path d="M12 2c.5 4-2 6-2 10a4 4 0 008 0c0-4-2-6-2-10" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </View>
+          </View>
+          <View style={{ marginTop: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: theme.textSecondary }}>Next Milestone</Text>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: Colors.primary }}>30 Days</Text>
+            </View>
+            <View style={{ height: 5, backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 3 }}>
+              <View style={{ height: 5, backgroundColor: Colors.primary, borderRadius: 3, width: `${Math.min(100, (streak / 30) * 100)}%` }} />
+            </View>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: theme.textSecondary, marginTop: 5 }}>
+              {Math.max(0, 30 - streak)} days until 'Consistency Pro' badge
+            </Text>
+          </View>
+        </View>
+
+        {/* Weight Progression */}
+        <View style={{ marginHorizontal: 20, backgroundColor: theme.surface, borderRadius: 18, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: theme.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <View>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>Weight Progression</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                Average loss: {totalLost > 0 ? (totalLost / 4).toFixed(1) : '0.0'} kg/week
+              </Text>
+            </View>
+            <View>
+              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 22, color: theme.text, textAlign: 'right' }}>
+                {currentWeight} kg
+              </Text>
+              {totalLost !== 0 && (
+                <View style={{ backgroundColor: totalLost > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(248,113,113,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, alignSelf: 'flex-end', marginTop: 4 }}>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color: totalLost > 0 ? theme.green : theme.red }}>
+                    {totalLost > 0 ? '−' : '+'}{Math.abs(totalLost)} kg total
                   </Text>
                 </View>
               )}
             </View>
-            {buildWeightLine() ? (
-              <Svg width={CHART_WIDTH} height={80}>
-                <Polyline
-                  points={buildWeightLine()!}
-                  fill="none"
-                  stroke="#38bdf8"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {weightData.map((d, i) => {
-                  const weights = weightData.map((dd) => dd.weightKg);
-                  const min = Math.min(...weights) - 0.5;
-                  const max = Math.max(...weights) + 0.5;
-                  const range = max - min || 1;
-                  const x = (i / (weightData.length - 1)) * CHART_WIDTH;
-                  const y = 80 - ((d.weightKg - min) / range) * 80;
-                  if (i === weightData.length - 1) {
-                    return <Circle key={i} cx={x} cy={y} r={4} fill="#38bdf8" stroke="#000" strokeWidth={2} />;
-                  }
-                  return null;
-                })}
-              </Svg>
-            ) : (
-              <Text style={{ color: '#555', fontFamily: 'Inter_400Regular', fontSize: 13 }}>Not enough data yet</Text>
-            )}
           </View>
-        )}
-
-        {/* Vitality Split (Macros) */}
-        <View style={{
-          marginHorizontal: 20, backgroundColor: '#111', borderRadius: 18, padding: 20, marginBottom: 14,
-          borderWidth: 1, borderColor: '#1a1a1a',
-        }}>
-          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff', marginBottom: 4 }}>Vitality Split</Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#555', marginBottom: 20 }}>Average macros</Text>
-
-          {[
-            { label: 'Protein', value: user?.dailyProteinGoal || 150, color: Colors.primary, pct: 0.65 },
-            { label: 'Carbs',   value: user?.dailyCarbGoal || 250,   color: Colors.tertiary, pct: 0.80 },
-            { label: 'Fats',    value: user?.dailyFatGoal || 65,     color: '#888',          pct: 0.40 },
-          ].map((m) => (
-            <View key={m.label} style={{ marginBottom: 16 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ fontFamily: 'Inter_500Medium', color: '#888', fontSize: 13 }}>{m.label}</Text>
-                <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 14 }}>{m.value}g</Text>
-              </View>
-              <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
-                <View style={{ height: 4, backgroundColor: m.color, borderRadius: 2, width: `${m.pct * 100}%` }} />
-              </View>
+          {wPts ? (
+            <Svg width={CHART_W} height={80}>
+              <Defs>
+                <SvgLinearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor="#38bdf8" stopOpacity="0.3" />
+                  <Stop offset="1" stopColor="#38bdf8" stopOpacity="0" />
+                </SvgLinearGradient>
+              </Defs>
+              <Polyline points={wPts} fill="none" stroke="#38bdf8" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          ) : (
+            <View style={{ height: 70, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textSecondary, fontSize: 13 }}>Log weight to see progression</Text>
             </View>
-          ))}
-
-          <TouchableOpacity style={{
-            backgroundColor: '#1a1a1a', borderRadius: 12, paddingVertical: 14, alignItems: 'center',
-            borderWidth: 1, borderColor: '#2a2a2a',
-          }}>
-            <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#fff', fontSize: 13 }}>Full Micronutrients</Text>
-          </TouchableOpacity>
+          )}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+            {['WK 1', 'WK 2', 'WK 3', 'WK 4'].map(w => (
+              <Text key={w} style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: theme.textTertiary }}>{w}</Text>
+            ))}
+          </View>
         </View>
 
-        {/* Fuel Consumption (weekly bars) */}
-        {barData.length > 0 && (
-          <View style={{
-            marginHorizontal: 20, backgroundColor: '#111', borderRadius: 18, padding: 20, marginBottom: 14,
-            borderWidth: 1, borderColor: '#1a1a1a',
-          }}>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff', marginBottom: 2 }}>Fuel Consumption</Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12, marginBottom: 16 }}>
-              Weekly Average: {avgCals.toLocaleString()} kcal
-            </Text>
-
-            {/* Period tabs */}
-            <View style={{ flexDirection: 'row', backgroundColor: '#1a1a1a', borderRadius: 10, padding: 3, marginBottom: 20, alignSelf: 'flex-start' }}>
-              {(['Day', 'Week'] as const).map((p) => (
-                <TouchableOpacity
-                  key={p}
-                  onPress={() => setPeriod(p as any)}
-                  style={{
-                    paddingHorizontal: 16, paddingVertical: 6, borderRadius: 8,
-                    backgroundColor: period === p ? '#2a2a2a' : 'transparent',
-                  }}
-                >
-                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: period === p ? '#fff' : '#555' }}>{p}</Text>
-                </TouchableOpacity>
-              ))}
+        {/* Weekly Intake Chart */}
+        <View style={{ marginHorizontal: 20, backgroundColor: theme.surface, borderRadius: 18, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: theme.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>Weekly Intake</Text>
+            <View style={{ flexDirection: 'row' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary, marginRight: 4 }} />
+                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textSecondary }}>IN TAKE</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.green, marginRight: 4 }} />
+                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textSecondary }}>TARGET</Text>
+              </View>
             </View>
-
-            <Svg width={CHART_WIDTH} height={120}>
-              {barData.map((d, i) => {
-                const x = i * ((CHART_WIDTH) / barData.length) + 4;
-                const barHeight = (d.calories / maxCal) * 100;
-                const overGoal = d.calories > (user?.dailyCalGoal || 2000);
+          </View>
+          {bars.length > 0 ? (
+            <Svg width={CHART_W} height={110}>
+              {bars.map((d, i) => {
+                const x = i * barSlot + barSlot * 0.225;
+                const bH = Math.max(4, (d.calories / maxCal) * 90);
                 return (
                   <G key={i}>
-                    <Rect
-                      x={x + barW * 0.15}
-                      y={120 - barHeight}
-                      width={barW * 0.7}
-                      height={barHeight}
-                      rx={4}
-                      fill={overGoal ? '#f87171' : Colors.primary}
-                      opacity={0.85}
-                    />
+                    <Rect x={x} y={90 - bH} width={barW} height={bH} rx={4} fill={Colors.primary} opacity={0.85} />
                   </G>
                 );
               })}
+              {/* Target line */}
+              <Line
+                x1={0} y1={90 - ((user?.dailyCalGoal || 2000) / maxCal) * 90}
+                x2={CHART_W} y2={90 - ((user?.dailyCalGoal || 2000) / maxCal) * 90}
+                stroke={theme.green} strokeWidth={1.5} strokeDasharray="4,4" opacity={0.6}
+              />
             </Svg>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }}>
-              {barData.map((d, i) => {
-                const day = new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3);
-                return (
-                  <Text key={i} style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: '#555' }}>{day}</Text>
-                );
-              })}
+          ) : (
+            <View style={{ height: 110, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textSecondary, fontSize: 13 }}>No data yet</Text>
             </View>
+          )}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 4 }}>
+            {(bars.length > 0 ? bars : Array(7).fill(null)).map((d, i) => {
+              const label = d ? new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1) : ['M','T','W','T','F','S','S'][i];
+              return <Text key={i} style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: theme.textTertiary }}>{label}</Text>;
+            })}
           </View>
-        )}
+        </View>
 
-        {/* Health tracker cards */}
-        <View style={{ marginHorizontal: 20, gap: 10, marginBottom: 14 }}>
+        {/* Weekly Average Macros */}
+        <View style={{ marginHorizontal: 20, backgroundColor: theme.surface, borderRadius: 18, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: theme.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>Weekly Average Macros</Text>
+          </View>
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary, marginBottom: 16 }}>
+            {avgCals > 0 ? `${Math.round(avgCals).toLocaleString()} kcal avg/day` : 'Log meals to see averages'}
+          </Text>
           {[
-            { icon: <WaterIcon />, label: 'Hydration', desc: '+15% vs last week', bg: '#0c1a3d', border: '#1a2a5a' },
-            { icon: <MoonSmallIcon />, label: 'Sleep Quality', desc: '8.2h avg duration', bg: '#111', border: '#1a1a1a' },
-            { icon: <ActivityIcon />, label: 'Activity Level', desc: 'Highly Active', bg: '#111', border: '#1a1a1a' },
-          ].map((item) => (
-            <View key={item.label} style={{
-              backgroundColor: item.bg, borderRadius: 16, padding: 18,
-              flexDirection: 'row', alignItems: 'center', gap: 14,
-              borderWidth: 1, borderColor: item.border,
-            }}>
-              <View style={{
-                width: 40, height: 40, borderRadius: 20,
-                backgroundColor: 'rgba(255,255,255,0.06)',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                {item.icon}
+            { label: 'Protein', value: user?.dailyProteinGoal || 150, goal: user?.dailyProteinGoal || 150, color: Colors.primary },
+            { label: 'Carbs', value: user?.dailyCarbGoal || 210, goal: user?.dailyCarbGoal || 250, color: theme.green },
+            { label: 'Fats', value: user?.dailyFatGoal || 65, goal: user?.dailyFatGoal || 80, color: theme.orange },
+          ].map((m) => (
+            <View key={m.label} style={{ marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={{ fontFamily: 'Inter_500Medium', color: theme.textSecondary, fontSize: 13 }}>{m.label}</Text>
+                <Text style={{ fontFamily: 'Inter_700Bold', color: theme.text, fontSize: 14 }}>{m.value}g</Text>
               </View>
-              <View>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#fff' }}>{item.label}</Text>
-                <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: '#555', marginTop: 2 }}>{item.desc}</Text>
+              <View style={{ height: 6, backgroundColor: theme.surface2, borderRadius: 3 }}>
+                <View style={{ height: 6, backgroundColor: m.color, borderRadius: 3, width: `${Math.min(100, (m.value / (m.goal || 1)) * 100)}%` }} />
               </View>
             </View>
           ))}
+        </View>
+
+        {/* Insight Cards */}
+        <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+          <TouchableOpacity style={{ backgroundColor: theme.primaryBg, borderRadius: 14, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: theme.primaryBorder, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 3 }}>Protein Efficiency</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary }}>
+                You're averaging {user?.dailyProteinGoal || 150}g/day
+              </Text>
+            </View>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(59,130,246,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={{ backgroundColor: theme.surface, borderRadius: 14, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: theme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 3 }}>Sleep & Recovery</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary }}>Correlation with lower intake</Text>
+            </View>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(129,140,248,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="#818cf8" strokeWidth={1.8} />
+              </Svg>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={{ backgroundColor: theme.surface, borderRadius: 14, padding: 18, borderWidth: 1, borderColor: theme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 3 }}>Export PDF Report</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary }}>Detailed monthly analysis</Text>
+            </View>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.surface2, alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke={theme.textSecondary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Bio-Markers */}
+        <View style={{ marginHorizontal: 20, marginBottom: 14 }}>
+          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color: theme.textSecondary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>Bio-Markers</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {bioMarkers.map((b, i) => (
+              <View key={b.label} style={{ width: '48%', backgroundColor: theme.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: theme.border, marginRight: i % 2 === 0 ? '4%' : 0, marginBottom: 10 }}>
+                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textSecondary, marginBottom: 6 }}>{b.label}</Text>
+                <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: theme.text, letterSpacing: -0.5 }}>
+                  {b.value}<Text style={{ fontSize: 13, fontFamily: 'Inter_400Regular', color: theme.textSecondary }}>{b.unit}</Text>
+                </Text>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: b.color, marginTop: 4 }}>{b.sub}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -9,6 +9,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { logsAPI, foodsAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -149,6 +150,7 @@ function ShifaBadge({ value, size = 'normal' }: { value: number; size?: 'normal'
 export default function LogScreen() {
   const params = useLocalSearchParams();
   const { todayLog, setTodayLog, user } = useStore();
+  const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [activeMeal, setActiveMeal] = useState<string>((params.meal as string) || 'breakfast');
   const [searchModal, setSearchModal] = useState(false);
@@ -228,17 +230,17 @@ export default function LogScreen() {
   const mealShifa = todayLog?.mealShifa?.[activeMeal];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: theme.surface2, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                 <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke={Colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
-            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff', letterSpacing: -0.5 }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, letterSpacing: -0.5 }}>
               Sanctuary
             </Text>
           </View>
@@ -247,7 +249,7 @@ export default function LogScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: '#fff', letterSpacing: -0.5, marginBottom: 4 }}>
+        <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: theme.text, letterSpacing: -0.5, marginBottom: 4 }}>
           {'What did you eat\ntoday?'}
         </Text>
       </View>
@@ -259,11 +261,11 @@ export default function LogScreen() {
       >
         {/* Describe meal input */}
         <View style={{
-          backgroundColor: '#141414', borderRadius: 14, padding: 16, marginTop: 12,
+          backgroundColor: theme.surface, borderRadius: 14, padding: 16, marginTop: 12,
           flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-          borderWidth: 1, borderColor: '#1a1a1a',
+          borderWidth: 1, borderColor: theme.border,
         }}>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: '#444' }}>
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: theme.textTertiary }}>
             Describe your meal...
           </Text>
           <TouchableOpacity style={{
@@ -280,13 +282,15 @@ export default function LogScreen() {
           onPress={() => setSearchModal(true)}
           style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-            marginTop: 16, backgroundColor: '#111', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14,
-            borderWidth: 1, borderColor: '#1a1a1a',
+            marginTop: 16, backgroundColor: theme.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14,
+            borderWidth: 1, borderColor: theme.border,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <SearchIcon />
-            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: '#444' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ marginRight: 10 }}>
+              <SearchIcon />
+            </View>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: theme.textTertiary }}>
               Search for food or scan
             </Text>
           </View>
@@ -311,7 +315,7 @@ export default function LogScreen() {
         {/* Meal tabs */}
         <View style={{ marginTop: 20, marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' }}>
               Meal Log
             </Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/scan')}>
@@ -331,14 +335,14 @@ export default function LogScreen() {
                   onPress={() => setActiveMeal(key)}
                   style={{
                     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
-                    backgroundColor: isActive ? color : '#111',
-                    borderWidth: 1, borderColor: isActive ? color : '#1a1a1a',
+                    backgroundColor: isActive ? color : theme.surface,
+                    borderWidth: 1, borderColor: isActive ? color : theme.border,
                     marginRight: 8,
                   }}
                 >
                   <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 12, color: '#fff' }}>{label}</Text>
                   {mealCals > 0 && (
-                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: isActive ? 'rgba(255,255,255,0.8)' : '#555', marginTop: 2 }}>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: isActive ? 'rgba(255,255,255,0.8)' : theme.textTertiary, marginTop: 2 }}>
                       {Math.round(mealCals)} kcal
                     </Text>
                   )}
@@ -359,19 +363,19 @@ export default function LogScreen() {
         {items.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 36, paddingBottom: 20 }}>
             <View style={{
-              width: 60, height: 60, borderRadius: 30, backgroundColor: '#111',
+              width: 60, height: 60, borderRadius: 30, backgroundColor: theme.surface,
               alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-              borderWidth: 1, borderColor: '#1a1a1a',
+              borderWidth: 1, borderColor: theme.border,
             }}>
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                 <Path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 <Path d="M17 2v6a4 4 0 01-4 4M17 2v20M21 2c0 4-2 8-4 8" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff', marginBottom: 6 }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text, marginBottom: 6 }}>
               {'No ' + MEAL_LABELS[activeMeal] + ' yet'}
             </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
               {'Add food manually or use AI Scan to\ndetect and log your meal instantly.'}
             </Text>
           </View>
@@ -383,14 +387,14 @@ export default function LogScreen() {
                 <View
                   key={item.id}
                   style={{
-                    backgroundColor: '#111', borderRadius: 14, padding: 16,
-                    marginBottom: 8, borderWidth: 1, borderColor: '#1a1a1a',
+                    backgroundColor: theme.surface, borderRadius: 14, padding: 16,
+                    marginBottom: 8, borderWidth: 1, borderColor: theme.border,
                   }}
                 >
                   {/* Top row: badges */}
-                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', marginBottom: 8 }}>
                     {item.aiDetected && (
-                      <View style={{ backgroundColor: '#064e3b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <View style={{ backgroundColor: '#064e3b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 6 }}>
                         <Text style={{ color: '#34d399', fontFamily: 'Inter_700Bold', fontSize: 8, letterSpacing: 1 }}>AI</Text>
                       </View>
                     )}
@@ -402,16 +406,16 @@ export default function LogScreen() {
                   {/* Main content row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#fff', marginBottom: 4 }}>
+                      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 4 }}>
                         {item.food.name}
                       </Text>
-                      <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12 }}>
+                      <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12 }}>
                         {item.grams + 'g | P: ' + Math.round(item.protein) + 'g  C: ' + Math.round(item.carbs) + 'g  F: ' + Math.round(item.fat) + 'g'}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end', marginRight: 10 }}>
-                      <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: '#fff' }}>{Math.round(item.calories)}</Text>
-                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1 }}>KCAL</Text>
+                      <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: theme.text }}>{Math.round(item.calories)}</Text>
+                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary, letterSpacing: 1 }}>KCAL</Text>
                     </View>
                     <TouchableOpacity onPress={() => deleteItem(item.id)} style={{ padding: 6 }}>
                       <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
@@ -440,11 +444,11 @@ export default function LogScreen() {
 
       {/* Food Search Modal */}
       <Modal visible={searchModal} animationType="slide" presentationStyle="pageSheet">
-        <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
+        <View style={{ flex: 1, backgroundColor: theme.bg }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 }}>
-            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: '#fff' }}>Search Food</Text>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: theme.text }}>Search Food</Text>
             <TouchableOpacity onPress={() => { setSearchModal(false); setSelectedFood(null); }}>
-              <Text style={{ color: '#555', fontSize: 15, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
+              <Text style={{ color: theme.textTertiary, fontSize: 15, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
 
@@ -456,23 +460,23 @@ export default function LogScreen() {
               placeholderTextColor="#333"
               autoFocus
               style={{
-                backgroundColor: '#111', borderRadius: 12, padding: 16,
-                color: '#fff', fontFamily: 'Inter_400Regular', fontSize: 16,
-                borderWidth: 1, borderColor: '#1a1a1a',
+                backgroundColor: theme.surface, borderRadius: 12, padding: 16,
+                color: theme.text, fontFamily: 'Inter_400Regular', fontSize: 16,
+                borderWidth: 1, borderColor: theme.border,
               }}
             />
           </View>
 
           {selectedFood ? (
             <View style={{ paddingHorizontal: 20 }}>
-              <View style={{ backgroundColor: '#111', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#1a1a1a' }}>
+              <View style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: theme.border }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 18, color: '#fff', flex: 1 }}>{selectedFood.name}</Text>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 18, color: theme.text, flex: 1 }}>{selectedFood.name}</Text>
                   <TouchableOpacity onPress={() => { setSelectedFood(null); setServingUnit('100g'); }}>
-                    <Text style={{ color: '#555', fontSize: 13 }}>Change</Text>
+                    <Text style={{ color: theme.textTertiary, fontSize: 13 }}>Change</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 8, letterSpacing: 1.2 }}>SERVING SIZE</Text>
+                <Text style={{ color: theme.textTertiary, fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 8, letterSpacing: 1.2 }}>SERVING SIZE</Text>
                 <View style={{ flexDirection: 'row', marginBottom: 10 }}>
                   {SERVING_UNITS.map((u, idx) => (
                     <TouchableOpacity
@@ -491,17 +495,17 @@ export default function LogScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: theme.border2 }}>
                   <TextInput
                     value={grams}
                     onChangeText={(t) => { setGrams(t); setServingUnit('custom'); }}
                     keyboardType="decimal-pad"
-                    style={{ flex: 1, padding: 16, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
+                    style={{ flex: 1, padding: 16, color: theme.text, fontFamily: 'Inter_700Bold', fontSize: 20 }}
                   />
-                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>g</Text>
+                  <Text style={{ color: theme.textTertiary, fontFamily: 'Inter_500Medium', paddingRight: 16 }}>g</Text>
                 </View>
                 {!!grams && Number(grams) > 0 && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: theme.surface2, borderRadius: 12, padding: 14, marginBottom: 16 }}>
                     {[
                       { label: 'Calories', val: String(Math.round((selectedFood.calories * Number(grams)) / 100)) },
                       { label: 'Protein',  val: Math.round((selectedFood.protein  * Number(grams)) / 100) + 'g' },
@@ -509,8 +513,8 @@ export default function LogScreen() {
                       { label: 'Fat',      val: Math.round((selectedFood.fat      * Number(grams)) / 100) + 'g' },
                     ].map((m) => (
                       <View key={m.label} style={{ alignItems: 'center' }}>
-                        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#fff' }}>{m.val}</Text>
-                        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: '#555', marginTop: 2 }}>{m.label}</Text>
+                        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>{m.val}</Text>
+                        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>{m.label}</Text>
                       </View>
                     ))}
                   </View>
@@ -541,21 +545,21 @@ export default function LogScreen() {
                   key={food.id}
                   onPress={() => setSelectedFood(food)}
                   style={{
-                    backgroundColor: '#111', borderRadius: 14, padding: 16,
+                    backgroundColor: theme.surface, borderRadius: 14, padding: 16,
                     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                    marginBottom: 8, borderWidth: 1, borderColor: '#1a1a1a',
+                    marginBottom: 8, borderWidth: 1, borderColor: theme.border,
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#fff', fontSize: 15 }}>{food.name}</Text>
+                    <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.text, fontSize: 15 }}>{food.name}</Text>
                     {food.brandName ? (
-                      <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 12 }}>{food.brandName}</Text>
+                      <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12 }}>{food.brandName}</Text>
                     ) : null}
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ fontFamily: 'Inter_700Bold', color: Colors.primary, fontSize: 14 }}>{Math.round(food.calories)}</Text>
-                      <Text style={{ fontFamily: 'Inter_500Medium', color: '#555', fontSize: 10 }}>kcal/100g</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'Inter_700Bold', color: Colors.primary, fontSize: 14, marginRight: 6 }}>{Math.round(food.calories)}</Text>
+                      <Text style={{ fontFamily: 'Inter_500Medium', color: theme.textTertiary, fontSize: 10 }}>kcal/100g</Text>
                     </View>
                     {food.shifaIndex != null && food.shifaIndex > 0 && (
                       <ShifaBadge value={food.shifaIndex} size="small" />
@@ -564,7 +568,7 @@ export default function LogScreen() {
                 </TouchableOpacity>
               ))}
               {!searching && searchQ.length > 0 && searchResults.length === 0 && (
-                <Text style={{ color: '#555', textAlign: 'center', marginTop: 40, fontFamily: 'Inter_400Regular' }}>
+                <Text style={{ color: theme.textTertiary, textAlign: 'center', marginTop: 40, fontFamily: 'Inter_400Regular' }}>
                   {'No results for "' + searchQ + '"'}
                 </Text>
               )}
