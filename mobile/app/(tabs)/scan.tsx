@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Alert, ActivityIndicator,
-  ScrollView, Modal, TextInput,
+  ScrollView, TextInput, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -95,6 +95,7 @@ export default function ScanScreen() {
   const [logging, setLogging] = useState(false);
   const [flash, setFlash] = useState(false);
   const [barcodeScanned, setBarcodeScanned] = useState(false);
+  const [cameraKey, setCameraKey] = useState(0);
   const cameraRef = useRef<CameraView>(null);
 
   const handleCapture = async () => {
@@ -152,7 +153,12 @@ export default function ScanScreen() {
       setResults(res.data.foods || []);
     } catch (err: any) {
       Alert.alert('Barcode not found', `Barcode: ${data}\n\nCould not identify this product.`, [
-        { text: 'Try Again', onPress: () => setBarcodeScanned(false) },
+        {
+          text: 'Try Again', onPress: () => {
+            setBarcodeScanned(false);
+            setCameraKey((k) => k + 1); // force camera remount
+          },
+        },
       ]);
     } finally {
       setScanning(false);
@@ -285,6 +291,7 @@ export default function ScanScreen() {
         </CameraView>
       ) : mode === 'barcode' ? (
         <CameraView
+          key={cameraKey}
           style={{ flex: 1 }}
           enableTorch={flash}
           onBarcodeScanned={handleBarcodeScanned}
@@ -319,29 +326,38 @@ export default function ScanScreen() {
           </View>
         </CameraView>
       ) : (
-        <View style={{ flex: 1, paddingTop: 130, paddingHorizontal: 24, backgroundColor: theme.bg }}>
-          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: theme.text, marginBottom: 8 }}>
-            Describe your meal
-          </Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24, lineHeight: 22 }}>
-            Tell me what you ate and I'll calculate the nutrition.
-          </Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="e.g. A bowl of oats with banana, honey and almond milk"
-            placeholderTextColor="#333"
-            multiline
-            numberOfLines={4}
-            style={{
-              backgroundColor: theme.surface, borderRadius: 14,
-              padding: 18, color: theme.text,
-              fontFamily: 'Inter_400Regular', fontSize: 15,
-              textAlignVertical: 'top', minHeight: 120,
-              borderWidth: 1, borderColor: theme.border,
-            }}
-          />
-        </View>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={{ flex: 1, paddingTop: 130, paddingHorizontal: 24, backgroundColor: theme.bg }}>
+              <Text style={{ fontFamily: 'Inter_900Black', fontSize: 26, color: theme.text, marginBottom: 8 }}>
+                Describe your meal
+              </Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24, lineHeight: 22 }}>
+                Tell me what you ate and I'll calculate the nutrition.
+              </Text>
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="e.g. 2 rotis with dal, a bowl of rice, or oats with banana and honey"
+                placeholderTextColor={theme.textTertiary}
+                multiline
+                numberOfLines={5}
+                returnKeyType="done"
+                blurOnSubmit
+                style={{
+                  backgroundColor: theme.surface, borderRadius: 14,
+                  padding: 18, color: theme.text,
+                  fontFamily: 'Inter_400Regular', fontSize: 15,
+                  textAlignVertical: 'top', minHeight: 140,
+                  borderWidth: 1, borderColor: theme.border,
+                }}
+              />
+              <TouchableOpacity onPress={Keyboard.dismiss} style={{ alignSelf: 'flex-end', marginTop: 10, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: theme.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.border }}>
+                <Text style={{ color: theme.textSecondary, fontFamily: 'Inter_500Medium', fontSize: 13 }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       )}
 
       {/* Bottom controls */}

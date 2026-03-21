@@ -3,6 +3,20 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, Dimensions,
 } from 'react-native';
+
+type UnitSystem = 'metric' | 'imperial';
+
+function cmToFtIn(cm: number): { ft: string; inch: string } {
+  const totalInches = cm / 2.54;
+  const ft = Math.floor(totalInches / 12);
+  const inch = Math.round(totalInches % 12);
+  return { ft: String(ft), inch: String(inch) };
+}
+function ftInToCm(ft: string, inch: string): number {
+  return Math.round((Number(ft || 0) * 12 + Number(inch || 0)) * 2.54);
+}
+function kgToLbs(kg: number): string { return kg ? String(Math.round(kg * 2.20462)) : ''; }
+function lbsToKg(lbs: string): number { return lbs ? Math.round(Number(lbs) / 2.20462 * 10) / 10 : 0; }
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
 import { authAPI } from '../../services/api';
@@ -114,6 +128,41 @@ export default function Onboarding() {
   const [activityLevel, setActivityLevel] = useState('moderately_active');
   const [goal, setGoal] = useState('maintain');
   const [customCalories, setCustomCalories] = useState('');
+
+  // Unit system state (all internal values stored in metric)
+  const [unitSystem, setUnitSystem] = useState<UnitSystem>('metric');
+  const [heightFt, setHeightFt] = useState('');
+  const [heightIn, setHeightIn] = useState('');
+  const [weightDisplay, setWeightDisplay] = useState('');
+  const [goalWeightDisplay, setGoalWeightDisplay] = useState('');
+
+  const switchUnits = (system: UnitSystem) => {
+    if (system === unitSystem) return;
+    if (system === 'imperial') {
+      // Convert metric → imperial for display
+      if (heightCm) { const { ft, inch } = cmToFtIn(Number(heightCm)); setHeightFt(ft); setHeightIn(inch); }
+      if (currentWeight) setWeightDisplay(kgToLbs(Number(currentWeight)));
+      if (goalWeight) setGoalWeightDisplay(kgToLbs(Number(goalWeight)));
+    } else {
+      // Convert imperial → metric and store
+      if (heightFt || heightIn) { const cm = ftInToCm(heightFt, heightIn); setHeightCm(String(cm)); }
+      if (weightDisplay) { const kg = lbsToKg(weightDisplay); setCurrentWeight(String(kg)); setWeightDisplay(''); }
+      if (goalWeightDisplay) { const kg = lbsToKg(goalWeightDisplay); setGoalWeight(String(kg)); setGoalWeightDisplay(''); }
+    }
+    setUnitSystem(system);
+  };
+
+  // Sync imperial display → internal metric on change
+  const onWeightChange = (val: string) => {
+    if (unitSystem === 'imperial') { setWeightDisplay(val); setCurrentWeight(String(lbsToKg(val))); }
+    else setCurrentWeight(val);
+  };
+  const onGoalWeightChange = (val: string) => {
+    if (unitSystem === 'imperial') { setGoalWeightDisplay(val); setGoalWeight(String(lbsToKg(val))); }
+    else setGoalWeight(val);
+  };
+  const onHeightFtChange = (val: string) => { setHeightFt(val); setHeightCm(String(ftInToCm(val, heightIn))); };
+  const onHeightInChange = (val: string) => { setHeightIn(val); setHeightCm(String(ftInToCm(heightFt, val))); };
 
   const validate = (): string | null => {
     if (step === 1) {
@@ -277,9 +326,29 @@ export default function Onboarding() {
             <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: '#fff', letterSpacing: -0.5, marginBottom: 8 }}>
               Personalize Your{'\n'}<Text style={{ color: Colors.primary }}>Journey</Text>
             </Text>
-            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 15, marginBottom: 36 }}>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: '#555', fontSize: 15, marginBottom: 20 }}>
               Enter your details to calculate your daily energy requirements.
             </Text>
+
+            {/* Unit system toggle */}
+            <View style={{ flexDirection: 'row', backgroundColor: '#111', borderRadius: 12, borderWidth: 1, borderColor: '#1a1a1a', padding: 3, marginBottom: 20 }}>
+              {(['metric', 'imperial'] as const).map((sys) => (
+                <TouchableOpacity
+                  key={sys}
+                  onPress={() => switchUnits(sys)}
+                  style={{
+                    flex: 1, paddingVertical: 10, borderRadius: 9,
+                    backgroundColor: unitSystem === sys ? Colors.primary : 'transparent',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: unitSystem === sys ? '#fff' : '#555', fontFamily: 'Inter_600SemiBold', fontSize: 12 }}>
+                    {sys === 'metric' ? 'Metric (kg/cm)' : 'Imperial (lbs/ft)'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <View style={{ gap: 14 }}>
               {/* Gender selector */}
               <View>
@@ -308,71 +377,65 @@ export default function Onboarding() {
 
               {/* Age & Weight side by side */}
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                {[
-                  { label: 'Age', value: age, setter: setAge, unit: 'yrs' },
-                  { label: 'Weight', value: currentWeight, setter: setCurrentWeight, unit: 'kg' },
-                ].map((f) => (
-                  <View key={f.label} style={{ flex: 1 }}>
-                    <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>
-                      {f.label.toUpperCase()}
-                    </Text>
-                    <View style={{
-                      flexDirection: 'row', alignItems: 'center',
-                      backgroundColor: '#111', borderRadius: 14,
-                      borderWidth: 1, borderColor: '#1a1a1a',
-                    }}>
-                      <TextInput
-                        value={f.value}
-                        onChangeText={f.setter}
-                        keyboardType="decimal-pad"
-                        placeholderTextColor="#333"
-                        placeholder="0"
-                        style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
-                      />
-                      <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>{f.unit}</Text>
-                    </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>AGE</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a' }}>
+                    <TextInput value={age} onChangeText={setAge} keyboardType="decimal-pad" placeholderTextColor="#333" placeholder="0"
+                      style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }} />
+                    <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>yrs</Text>
                   </View>
-                ))}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>WEIGHT</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a' }}>
+                    <TextInput
+                      value={unitSystem === 'imperial' ? weightDisplay : currentWeight}
+                      onChangeText={onWeightChange}
+                      keyboardType="decimal-pad" placeholderTextColor="#333" placeholder="0"
+                      style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
+                    />
+                    <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>{unitSystem === 'imperial' ? 'lbs' : 'kg'}</Text>
+                  </View>
+                </View>
               </View>
 
               {/* Height */}
               <View>
                 <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>HEIGHT</Text>
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center',
-                  backgroundColor: '#111', borderRadius: 14,
-                  borderWidth: 1, borderColor: '#1a1a1a',
-                }}>
-                  <TextInput
-                    value={heightCm}
-                    onChangeText={setHeightCm}
-                    keyboardType="decimal-pad"
-                    placeholderTextColor="#333"
-                    placeholder="170"
-                    style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
-                  />
-                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>cm</Text>
-                  <View style={{ flex: 1, height: 4, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 16 }} />
-                </View>
+                {unitSystem === 'metric' ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a' }}>
+                    <TextInput value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholderTextColor="#333" placeholder="170"
+                      style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }} />
+                    <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>cm</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a' }}>
+                      <TextInput value={heightFt} onChangeText={onHeightFtChange} keyboardType="decimal-pad" placeholderTextColor="#333" placeholder="5"
+                        style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }} />
+                      <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>ft</Text>
+                    </View>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a' }}>
+                      <TextInput value={heightIn} onChangeText={onHeightInChange} keyboardType="decimal-pad" placeholderTextColor="#333" placeholder="10"
+                        style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }} />
+                      <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>in</Text>
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Goal Weight */}
               <View>
                 <Text style={{ color: '#555', fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>GOAL WEIGHT</Text>
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center',
-                  backgroundColor: '#111', borderRadius: 14,
-                  borderWidth: 1, borderColor: '#1a1a1a',
-                }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1a1a1a' }}>
                   <TextInput
-                    value={goalWeight}
-                    onChangeText={setGoalWeight}
-                    keyboardType="decimal-pad"
-                    placeholderTextColor="#333"
-                    placeholder={currentWeight || '70'}
+                    value={unitSystem === 'imperial' ? goalWeightDisplay : goalWeight}
+                    onChangeText={onGoalWeightChange}
+                    keyboardType="decimal-pad" placeholderTextColor="#333"
+                    placeholder={unitSystem === 'imperial' ? kgToLbs(Number(currentWeight)) || '154' : currentWeight || '70'}
                     style={{ flex: 1, padding: 18, color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 20 }}
                   />
-                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>kg</Text>
+                  <Text style={{ color: '#555', fontFamily: 'Inter_500Medium', paddingRight: 16 }}>{unitSystem === 'imperial' ? 'lbs' : 'kg'}</Text>
                 </View>
               </View>
             </View>

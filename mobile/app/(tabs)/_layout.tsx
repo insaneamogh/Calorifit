@@ -1,12 +1,11 @@
 import { Tabs } from 'expo-router';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../context/ThemeContext';
 import Svg, { Path, Circle, Rect, G, Line } from 'react-native-svg';
 
-// Clean icon components using SVG instead of emojis
-function DashboardIcon({ focused }: { focused: boolean }) {
-  const color = focused ? '#fff' : '#555';
+function DashboardIcon({ focused, color }: { focused: boolean; color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Rect x={3} y={3} width={8} height={8} rx={2} stroke={color} strokeWidth={1.8} />
@@ -17,8 +16,7 @@ function DashboardIcon({ focused }: { focused: boolean }) {
   );
 }
 
-function LogIcon({ focused }: { focused: boolean }) {
-  const color = focused ? '#fff' : '#555';
+function LogIcon({ focused, color }: { focused: boolean; color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={1.8} />
@@ -28,7 +26,7 @@ function LogIcon({ focused }: { focused: boolean }) {
   );
 }
 
-function ScanIcon({ focused }: { focused: boolean }) {
+function ScanIcon() {
   return (
     <View style={{
       width: 50, height: 50, borderRadius: 25,
@@ -52,8 +50,7 @@ function ScanIcon({ focused }: { focused: boolean }) {
   );
 }
 
-function StatsIcon({ focused }: { focused: boolean }) {
-  const color = focused ? '#fff' : '#555';
+function StatsIcon({ focused, color }: { focused: boolean; color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Path d="M3 20L9 14L13 18L21 10" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
@@ -62,8 +59,7 @@ function StatsIcon({ focused }: { focused: boolean }) {
   );
 }
 
-function ProfileIcon({ focused }: { focused: boolean }) {
-  const color = focused ? '#fff' : '#555';
+function ProfileIcon({ focused, color }: { focused: boolean; color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={8} r={4} stroke={color} strokeWidth={1.8} />
@@ -73,21 +69,29 @@ function ProfileIcon({ focused }: { focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  const { theme, isDark } = useTheme();
+
+  const tabBarBg = isDark ? 'rgba(8,8,8,0.92)' : 'rgba(255,255,255,0.92)';
+  const tabBarBorder = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+  const activeColor = isDark ? '#fff' : '#111';
+  const inactiveColor = isDark ? '#555' : '#aaa';
+  const blurTint = isDark ? 'dark' : 'light';
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: 'rgba(8,8,8,0.92)',
-          borderTopColor: 'rgba(255,255,255,0.06)',
+          backgroundColor: tabBarBg,
+          borderTopColor: tabBarBorder,
           borderTopWidth: 1,
           height: 82,
           paddingBottom: 18,
           paddingTop: 10,
         },
-        tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor: '#555',
+        tabBarActiveTintColor: activeColor,
+        tabBarInactiveTintColor: inactiveColor,
         tabBarLabelStyle: {
           fontFamily: 'Inter_600SemiBold',
           fontSize: 9,
@@ -96,14 +100,15 @@ export default function TabsLayout() {
           marginTop: 4,
         },
         tabBarBackground: () => (
-          <BlurView intensity={40} tint="dark" style={{ flex: 1 }} />
+          <BlurView intensity={40} tint={blurTint} style={{ flex: 1 }} />
         ),
         tabBarIcon: ({ focused }) => {
-          if (route.name === 'index') return <DashboardIcon focused={focused} />;
-          if (route.name === 'log') return <LogIcon focused={focused} />;
-          if (route.name === 'scan') return <ScanIcon focused={focused} />;
-          if (route.name === 'stats') return <StatsIcon focused={focused} />;
-          if (route.name === 'profile') return <ProfileIcon focused={focused} />;
+          const color = focused ? activeColor : inactiveColor;
+          if (route.name === 'index') return <DashboardIcon focused={focused} color={color} />;
+          if (route.name === 'log') return <LogIcon focused={focused} color={color} />;
+          if (route.name === 'scan') return <ScanIcon />;
+          if (route.name === 'stats') return <StatsIcon focused={focused} color={color} />;
+          if (route.name === 'profile') return <ProfileIcon focused={focused} color={color} />;
           return null;
         },
       })}
