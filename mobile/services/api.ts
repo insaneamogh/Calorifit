@@ -11,7 +11,7 @@ import {
   mockProgressAPI,
 } from './mockApi';
 
-const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'https://calorifit-production.up.railway.app/api';
 
 const api = axios.create({ baseURL: BASE_URL, timeout: 30000 });
 

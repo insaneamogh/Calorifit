@@ -18,7 +18,7 @@ import {
 // ────────────────────────────────────────────
 //  Toggle this flag to switch between real & mock
 // ────────────────────────────────────────────
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 
 /** Simulate network latency (ms) */
 const delay = (ms = 200) => new Promise((r) => setTimeout(r, ms));
