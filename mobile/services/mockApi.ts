@@ -144,6 +144,15 @@ export const mockLogsAPI = {
     sessionItems.push(...items);
     return wrap(items);
   },
+  updateItem: (id: string, data: any) => {
+    const idx = sessionItems.findIndex((i) => i.id === id);
+    if (idx >= 0) {
+      const item = sessionItems[idx];
+      const ratio = (data.grams || item.grams) / (item.grams || 100);
+      sessionItems[idx] = { ...item, grams: data.grams, calories: item.calories * ratio, protein: item.protein * ratio, carbs: item.carbs * ratio, fat: item.fat * ratio };
+    }
+    return wrap(sessionItems[idx] || {});
+  },
   deleteItem: (id: string) => {
     sessionItems = sessionItems.filter((i) => i.id !== id);
     return wrap({ success: true });
@@ -153,6 +162,11 @@ export const mockLogsAPI = {
 export const mockAiAPI = {
   scanImage: (_base64: string, _mimeType = 'image/jpeg') => wrap(MOCK_SCAN_RESULT, 800),
   describeFood: (_description: string) => wrap(MOCK_SCAN_RESULT, 600),
+  lookupBarcode: (_barcode: string) => wrap(MOCK_SCAN_RESULT, 600),
+  estimateExercise: (_description: string, _userWeightKg?: number) => wrap({
+    exercises: [{ name: 'Running', category: 'cardio', sets: null, reps: null, weight: null, duration: 30, caloriesBurned: 300, met: 9.8 }],
+    totalCalories: 300, notes: 'Mock estimate',
+  }, 600),
 };
 
 export const mockWaterAPI = {

@@ -1,13 +1,23 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Alert, ActivityIndicator, Modal, RefreshControl,
+  Alert, ActivityIndicator, Modal, RefreshControl, Keyboard,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { logsAPI, foodsAPI, aiAPI } from '../../services/api';
+
+function EditIcon({ color = '#888' }: { color?: string }) {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
 import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
@@ -169,6 +179,22 @@ export default function LogScreen() {
   const [describingMeal, setDescribingMeal] = useState(false);
   const [describeResults, setDescribeResults] = useState<any>(null);
 
+  // Edit portion modal state
+  const [editModal, setEditModal] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
+  const [editGrams, setEditGrams] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Custom food modal state
+  const [customFoodModal, setCustomFoodModal] = useState(false);
+  const [cfName, setCfName] = useState('');
+  const [cfCalories, setCfCalories] = useState('');
+  const [cfProtein, setCfProtein] = useState('');
+  const [cfCarbs, setCfCarbs] = useState('');
+  const [cfFat, setCfFat] = useState('');
+  const [cfGrams, setCfGrams] = useState('100');
+  const [cfSaving, setCfSaving] = useState(false);
+
   const loadLog = useCallback(async () => {
     try {
       const res = await logsAPI.getDay(today());
@@ -250,6 +276,58 @@ export default function LogScreen() {
       Alert.alert('Error', err.response?.data?.error || 'Failed to analyze meal description');
     } finally {
       setDescribingMeal(false);
+    }
+  };
+
+  const openEditModal = (item: any) => {
+    setEditItem(item);
+    setEditGrams(String(Math.round(item.grams)));
+    setEditModal(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editItem || !editGrams || Number(editGrams) <= 0) return;
+    setEditSaving(true);
+    try {
+      await logsAPI.updateItem(editItem.id, { grams: Number(editGrams) });
+      setEditModal(false);
+      setEditItem(null);
+      await loadLog();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to update portion');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleCreateCustomFood = async () => {
+    if (!cfName.trim() || !cfCalories) return;
+    setCfSaving(true);
+    try {
+      // Create custom food (values are per 100g)
+      const res = await foodsAPI.createCustom({
+        name: cfName.trim(),
+        calories: Number(cfCalories),
+        protein: Number(cfProtein) || 0,
+        carbs: Number(cfCarbs) || 0,
+        fat: Number(cfFat) || 0,
+      });
+      // Log it immediately
+      const gramsVal = Number(cfGrams) || 100;
+      await logsAPI.addItem({
+        date: today(),
+        foodId: res.data.id,
+        meal: activeMeal,
+        grams: gramsVal,
+      });
+      setCustomFoodModal(false);
+      setCfName(''); setCfCalories(''); setCfProtein(''); setCfCarbs(''); setCfFat(''); setCfGrams('100');
+      await loadLog();
+      Alert.alert('Added!', `${cfName.trim()} added to ${MEAL_LABELS[activeMeal]}`);
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to create custom food');
+    } finally {
+      setCfSaving(false);
     }
   };
 
@@ -472,7 +550,7 @@ export default function LogScreen() {
                   </View>
 
                   {/* Main content row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => openEditModal(item)} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 4 }}>
                         {item.food.name}
@@ -485,12 +563,15 @@ export default function LogScreen() {
                       <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: theme.text }}>{Math.round(item.calories)}</Text>
                       <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary, letterSpacing: 1 }}>KCAL</Text>
                     </View>
+                    <TouchableOpacity onPress={() => openEditModal(item)} style={{ padding: 6, marginRight: 4 }}>
+                      <EditIcon color={Colors.primary} />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => deleteItem(item.id)} style={{ padding: 6 }}>
                       <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
                         <Path d="M18 6L6 18M6 6l12 12" stroke={theme.textTertiary} strokeWidth={2} strokeLinecap="round" />
                       </Svg>
                     </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -509,6 +590,21 @@ export default function LogScreen() {
             <ListIcon />
           </View>
           <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 15 }}>Manual Entry</Text>
+        </TouchableOpacity>
+
+        {/* Create Custom Food button */}
+        <TouchableOpacity
+          onPress={() => setCustomFoodModal(true)}
+          style={{
+            marginTop: 10, backgroundColor: theme.surface, borderRadius: 14,
+            paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+            borderWidth: 1, borderColor: Colors.primary,
+          }}
+        >
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginRight: 8 }}>
+            <Path d="M12 5v14M5 12h14" stroke={Colors.primary} strokeWidth={2.5} strokeLinecap="round" />
+          </Svg>
+          <Text style={{ fontFamily: 'Inter_700Bold', color: Colors.primary, fontSize: 15 }}>Create Custom Meal</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -638,12 +734,251 @@ export default function LogScreen() {
                 </TouchableOpacity>
               ))}
               {!searching && searchQ.length > 0 && searchResults.length === 0 && (
-                <Text style={{ color: theme.textTertiary, textAlign: 'center', marginTop: 40, fontFamily: 'Inter_400Regular' }}>
-                  {'No results for "' + searchQ + '"'}
-                </Text>
+                <View style={{ alignItems: 'center', marginTop: 40 }}>
+                  <Text style={{ color: theme.textTertiary, fontFamily: 'Inter_400Regular', marginBottom: 16 }}>
+                    {'No results for "' + searchQ + '"'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => { setSearchModal(false); setCfName(searchQ); setCustomFoodModal(true); }}
+                    style={{
+                      backgroundColor: Colors.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
+                    }}
+                  >
+                    <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 14 }}>Create Custom Food</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </ScrollView>
           )}
+        </View>
+      </Modal>
+
+      {/* Edit Portion Modal */}
+      <Modal visible={editModal} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={{
+              backgroundColor: theme.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+              padding: 24, paddingBottom: 40,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text }}>
+                  Edit Portion
+                </Text>
+                <TouchableOpacity onPress={() => { setEditModal(false); setEditItem(null); }}>
+                  <Text style={{ color: theme.textTertiary, fontSize: 15, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+
+              {editItem && (
+                <>
+                  <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text, marginBottom: 4 }}>
+                    {editItem.food.name}
+                  </Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textTertiary, marginBottom: 16 }}>
+                    {'Current: ' + Math.round(editItem.grams) + 'g | ' + Math.round(editItem.calories) + ' kcal'}
+                  </Text>
+
+                  {/* Quick portion presets */}
+                  <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                    {SERVING_UNITS.map((u, idx) => (
+                      <TouchableOpacity
+                        key={u.label}
+                        onPress={() => setEditGrams(String(u.grams))}
+                        style={{
+                          paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                          marginRight: idx < SERVING_UNITS.length - 1 ? 6 : 0,
+                          backgroundColor: editGrams === String(u.grams) ? Colors.primary : theme.surface2,
+                          borderWidth: 1, borderColor: editGrams === String(u.grams) ? Colors.primary : theme.border,
+                        }}
+                      >
+                        <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: editGrams === String(u.grams) ? '#fff' : theme.textSecondary }}>
+                          {u.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={{ color: theme.textTertiary, fontFamily: 'Inter_600SemiBold', fontSize: 10, marginBottom: 6, letterSpacing: 1.2 }}>
+                    NEW PORTION SIZE (GRAMS)
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: theme.border2 }}>
+                    <TextInput
+                      value={editGrams}
+                      onChangeText={setEditGrams}
+                      keyboardType="decimal-pad"
+                      autoFocus
+                      style={{ flex: 1, padding: 16, color: theme.text, fontFamily: 'Inter_700Bold', fontSize: 20 }}
+                    />
+                    <Text style={{ color: theme.textTertiary, fontFamily: 'Inter_500Medium', paddingRight: 16 }}>g</Text>
+                  </View>
+
+                  {/* Macro preview */}
+                  {!!editGrams && Number(editGrams) > 0 && editItem.food && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: theme.surface2, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                      {[
+                        { label: 'Calories', val: String(Math.round((editItem.food.calories * Number(editGrams)) / 100)) },
+                        { label: 'Protein', val: Math.round((editItem.food.protein * Number(editGrams)) / 100) + 'g' },
+                        { label: 'Carbs', val: Math.round((editItem.food.carbs * Number(editGrams)) / 100) + 'g' },
+                        { label: 'Fat', val: Math.round((editItem.food.fat * Number(editGrams)) / 100) + 'g' },
+                      ].map((m) => (
+                        <View key={m.label} style={{ alignItems: 'center' }}>
+                          <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>{m.val}</Text>
+                          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>{m.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={handleEditSave}
+                    disabled={editSaving || !editGrams || Number(editGrams) <= 0}
+                    style={{
+                      backgroundColor: (!editGrams || Number(editGrams) <= 0) ? theme.surface2 : Colors.primary,
+                      borderRadius: 14, paddingVertical: 16, alignItems: 'center',
+                    }}
+                  >
+                    {editSaving ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={{ fontFamily: 'Inter_700Bold', color: (!editGrams || Number(editGrams) <= 0) ? theme.textTertiary : '#fff', fontSize: 16 }}>
+                        Update Portion
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Custom Food Modal */}
+      <Modal visible={customFoodModal} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={{
+              backgroundColor: theme.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+              padding: 24, paddingBottom: 40,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text }}>
+                  Create Custom Meal
+                </Text>
+                <TouchableOpacity onPress={() => setCustomFoodModal(false)}>
+                  <Text style={{ color: theme.textTertiary, fontSize: 15, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textTertiary, marginBottom: 16 }}>
+                Add a meal you regularly eat. Enter nutrition per 100g.
+              </Text>
+
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, marginBottom: 6, letterSpacing: 1 }}>MEAL NAME</Text>
+              <TextInput
+                value={cfName}
+                onChangeText={setCfName}
+                placeholder="e.g. Mom's Dal Chawal"
+                placeholderTextColor={theme.textTertiary}
+                style={{
+                  backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                  color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                  marginBottom: 14,
+                }}
+              />
+
+              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, marginBottom: 6, letterSpacing: 1 }}>CALORIES</Text>
+                  <TextInput
+                    value={cfCalories}
+                    onChangeText={setCfCalories}
+                    placeholder="per 100g"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    style={{
+                      backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                      color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                    }}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, marginBottom: 6, letterSpacing: 1 }}>PORTION (g)</Text>
+                  <TextInput
+                    value={cfGrams}
+                    onChangeText={setCfGrams}
+                    placeholder="100"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    style={{
+                      backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                      color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                    }}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+                {[
+                  { label: 'PROTEIN', val: cfProtein, set: setCfProtein },
+                  { label: 'CARBS', val: cfCarbs, set: setCfCarbs },
+                  { label: 'FAT', val: cfFat, set: setCfFat },
+                ].map((field, idx) => (
+                  <View key={field.label} style={{ flex: 1, marginRight: idx < 2 ? 8 : 0 }}>
+                    <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, marginBottom: 6, letterSpacing: 1 }}>
+                      {field.label}
+                    </Text>
+                    <TextInput
+                      value={field.val}
+                      onChangeText={field.set}
+                      placeholder="g"
+                      placeholderTextColor={theme.textTertiary}
+                      keyboardType="numeric"
+                      style={{
+                        backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                        color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                      }}
+                    />
+                  </View>
+                ))}
+              </View>
+
+              {/* Preview */}
+              {cfCalories && cfGrams && Number(cfGrams) > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: theme.surface2, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>
+                      {Math.round((Number(cfCalories) * Number(cfGrams)) / 100)}
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>Calories</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>
+                      {Math.round(((Number(cfProtein) || 0) * Number(cfGrams)) / 100) + 'g'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>Protein</Text>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                onPress={handleCreateCustomFood}
+                disabled={cfSaving || !cfName.trim() || !cfCalories}
+                style={{
+                  backgroundColor: (!cfName.trim() || !cfCalories) ? theme.surface2 : Colors.primary,
+                  borderRadius: 14, paddingVertical: 16, alignItems: 'center',
+                }}
+              >
+                {cfSaving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={{ fontFamily: 'Inter_700Bold', color: (!cfName.trim() || !cfCalories) ? theme.textTertiary : '#fff', fontSize: 16 }}>
+                    {'Create & Add to ' + MEAL_LABELS[activeMeal]}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </SafeAreaView>

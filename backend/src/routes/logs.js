@@ -184,6 +184,41 @@ router.post('/item/ai', auth, async (req, res) => {
   }
 });
 
+// PUT /api/logs/item/:id - update portion size
+router.put('/item/:id', auth, async (req, res) => {
+  try {
+    const { grams } = req.body;
+    if (!grams || grams <= 0) return res.status(400).json({ error: 'Valid grams value required' });
+
+    const item = await prisma.foodLogItem.findUnique({
+      where: { id: req.params.id },
+      include: { log: true, food: true },
+    });
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+    if (item.log.userId !== req.userId) return res.status(403).json({ error: 'Forbidden' });
+
+    // Recalculate nutrition based on new grams using food's per-100g values
+    const nutrition = calculateItemNutrition(item.food, grams);
+
+    const updated = await prisma.foodLogItem.update({
+      where: { id: req.params.id },
+      data: {
+        grams,
+        calories: nutrition.calories,
+        protein: nutrition.protein,
+        carbs: nutrition.carbs,
+        fat: nutrition.fat,
+        fiber: (item.food.fiber || 0) * (grams / 100),
+      },
+      include: { food: true },
+    });
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/logs/item/:id
 router.delete('/item/:id', auth, async (req, res) => {
   try {

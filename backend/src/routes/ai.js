@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const auth = require('../middleware/auth');
-const { analyzeImage, describeFood } = require('../services/gemini');
+const { analyzeImage, describeFood, estimateExercise } = require('../services/gemini');
 const { lookupBarcode } = require('../services/barcode');
 
 const router = express.Router();
@@ -67,6 +67,21 @@ router.post('/barcode', auth, async (req, res) => {
   } catch (err) {
     console.error('Barcode lookup error:', err.message);
     res.status(500).json({ error: 'Barcode lookup failed: ' + err.message });
+  }
+});
+
+// POST /api/ai/estimate-exercise
+// Body: { description: "30 min run", userWeightKg: 75 }
+router.post('/estimate-exercise', auth, async (req, res) => {
+  try {
+    const { description, userWeightKg } = req.body;
+    if (!description) return res.status(400).json({ error: 'description is required' });
+
+    const result = await estimateExercise(description, userWeightKg || 70);
+    res.json(result);
+  } catch (err) {
+    console.error('Gemini exercise error:', err.message);
+    res.status(500).json({ error: 'AI analysis failed: ' + err.message });
   }
 });
 

@@ -65,6 +65,7 @@ const realLogsAPI = {
   getDay: (date: string) => api.get(`/logs/${date}`),
   addItem: (data: any) => api.post('/logs/item', data),
   addAIItems: (data: any) => api.post('/logs/item/ai', data),
+  updateItem: (id: string, data: any) => api.put(`/logs/item/${id}`, data),
   deleteItem: (id: string) => api.delete(`/logs/item/${id}`),
 };
 
@@ -73,6 +74,8 @@ const realAiAPI = {
     api.post('/ai/scan-image', { base64, mimeType }),
   describeFood: (description: string) => api.post('/ai/describe-food', { description }),
   lookupBarcode: (barcode: string) => api.post('/ai/barcode', { barcode }),
+  estimateExercise: (description: string, userWeightKg?: number) =>
+    api.post('/ai/estimate-exercise', { description, userWeightKg }),
 };
 
 const realWaterAPI = {

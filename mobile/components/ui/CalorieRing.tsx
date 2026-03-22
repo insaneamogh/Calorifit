@@ -11,7 +11,8 @@ interface Props {
 
 export default function CalorieRing({ eaten, burned, goal }: Props) {
   const { theme } = useTheme();
-  const left = Math.max(0, goal - eaten + burned);
+  const left = goal - eaten + burned;
+  const isOver = left < 0;
   const pct = Math.min(1, eaten / (goal || 1));
   const radius = 90;
   const circumference = 2 * Math.PI * radius;
@@ -52,25 +53,25 @@ export default function CalorieRing({ eaten, burned, goal }: Props) {
             {/* Progress */}
             <Circle
               cx={100} cy={100} r={radius}
-              stroke="url(#ringGrad)"
+              stroke={isOver ? '#ef4444' : 'url(#ringGrad)'}
               strokeWidth={10}
               fill="transparent"
               strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
+              strokeDashoffset={isOver ? 0 : strokeDashoffset}
               strokeLinecap="round"
             />
           </Svg>
           <View style={{ position: 'absolute', alignItems: 'center' }}>
             <Text style={{
-              fontFamily: 'Inter_900Black', fontSize: 38, color: theme.text, letterSpacing: -1.5,
+              fontFamily: 'Inter_900Black', fontSize: 38, color: isOver ? '#ef4444' : theme.text, letterSpacing: -1.5,
             }}>
               {Math.round(left).toLocaleString()}
             </Text>
             <Text style={{
-              fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary,
+              fontFamily: 'Inter_600SemiBold', fontSize: 10, color: isOver ? '#ef4444' : theme.textTertiary,
               letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
             }}>
-              Left
+              {isOver ? 'Over' : 'Left'}
             </Text>
           </View>
         </View>

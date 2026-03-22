@@ -385,20 +385,20 @@ export default function Dashboard() {
         }}>
           <View>
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>
-              Remaining
+              {goal - Math.round(totals.calories) < 0 ? 'Over by' : 'Remaining'}
             </Text>
-            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: theme.text }}>
-              {Math.max(0, goal - Math.round(totals.calories)).toLocaleString()} kcal
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: goal - Math.round(totals.calories) < 0 ? '#ef4444' : theme.text }}>
+              {Math.abs(goal - Math.round(totals.calories)).toLocaleString()} kcal
             </Text>
           </View>
           <View style={{ flexDirection: 'row' }}>
             {[
-              { label: 'Prot', value: Math.max(0, proteinGoal - Math.round(totals.protein)), color: '#f97316' },
-              { label: 'Carb', value: Math.max(0, carbGoal - Math.round(totals.carbs)),   color: Colors.primary },
-              { label: 'Fat',  value: Math.max(0, fatGoal - Math.round(totals.fat)),      color: Colors.tertiary },
+              { label: 'Prot', value: proteinGoal - Math.round(totals.protein), color: '#f97316' },
+              { label: 'Carb', value: carbGoal - Math.round(totals.carbs),   color: Colors.primary },
+              { label: 'Fat',  value: fatGoal - Math.round(totals.fat),      color: Colors.tertiary },
             ].map((m, idx) => (
               <View key={m.label} style={{ alignItems: 'center', marginLeft: idx > 0 ? 20 : 0 }}>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: m.color }}>{m.value}g</Text>
+                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: m.value < 0 ? '#ef4444' : m.color }}>{m.value}g</Text>
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>{m.label}</Text>
               </View>
             ))}
