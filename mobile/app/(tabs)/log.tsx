@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useStore } from '../../store/useStore';
-import { logsAPI, foodsAPI } from '../../services/api';
+import { logsAPI, foodsAPI, aiAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
 import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
@@ -46,7 +46,7 @@ function MicIcon() {
   );
 }
 
-function SearchIcon({ color = '#555' }: { color?: string }) {
+function SearchIcon({ color = '#888' }: { color?: string }) {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Circle cx={11} cy={11} r={8} stroke={color} strokeWidth={1.8} />
@@ -56,11 +56,12 @@ function SearchIcon({ color = '#555' }: { color?: string }) {
 }
 
 function FilterIcon() {
+  const { theme } = useTheme();
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Line x1={4} y1={6} x2={20} y2={6} stroke="#555" strokeWidth={1.8} strokeLinecap="round" />
-      <Line x1={8} y1={12} x2={16} y2={12} stroke="#555" strokeWidth={1.8} strokeLinecap="round" />
-      <Line x1={11} y1={18} x2={13} y2={18} stroke="#555" strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={4} y1={6} x2={20} y2={6} stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={8} y1={12} x2={16} y2={12} stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" />
+      <Line x1={11} y1={18} x2={13} y2={18} stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -88,6 +89,7 @@ function ListIcon() {
 }
 
 function ShifaBadge({ value, size = 'normal' }: { value: number; size?: 'normal' | 'small' | 'large' }) {
+  const { theme } = useTheme();
   const rating = getShifaRating(value);
   const color = getShifaColor(rating);
   const bgColor = getShifaBgColor(rating);
@@ -101,7 +103,7 @@ function ShifaBadge({ value, size = 'normal' }: { value: number; size?: 'normal'
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <View>
-          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textSecondary, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
             Meal Shifa Index
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
@@ -160,6 +162,9 @@ export default function LogScreen() {
   const [selectedFood, setSelectedFood] = useState<any>(null);
   const [grams, setGrams] = useState('100');
   const [servingUnit, setServingUnit] = useState('100g');
+  const [mealDesc, setMealDesc] = useState('');
+  const [describingMeal, setDescribingMeal] = useState(false);
+  const [describeResults, setDescribeResults] = useState<any>(null);
 
   const loadLog = useCallback(async () => {
     try {
@@ -208,6 +213,42 @@ export default function LogScreen() {
     }
   };
 
+  const handleDescribeMeal = async () => {
+    if (!mealDesc.trim()) return;
+    setDescribingMeal(true);
+    try {
+      const res = await aiAPI.describeFood(mealDesc.trim());
+      const data = res.data;
+      if (data?.foods?.length) {
+        // Auto-log all detected foods
+        await logsAPI.addAIItems({
+          date: today(),
+          meal: activeMeal,
+          foods: data.foods.map((f: any) => ({
+            name: f.name,
+            calories: f.calories,
+            protein: f.protein,
+            carbs: f.carbs,
+            fat: f.fat,
+            fiber: f.fiber || 0,
+            estimatedGrams: f.estimatedGrams || 100,
+            glycemicIndex: f.glycemicIndex,
+            tags: f.tags || [],
+          })),
+        });
+        setMealDesc('');
+        await loadLog();
+        Alert.alert('Logged!', `${data.foods.length} item(s) added to ${MEAL_LABELS[activeMeal]}`);
+      } else {
+        Alert.alert('No food detected', 'Try describing your meal differently.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to analyze meal description');
+    } finally {
+      setDescribingMeal(false);
+    }
+  };
+
   const deleteItem = async (id: string) => {
     Alert.alert('Remove item', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
@@ -245,7 +286,7 @@ export default function LogScreen() {
             </Text>
           </View>
           <TouchableOpacity style={{ padding: 4 }}>
-            <SearchIcon color="#666" />
+            <SearchIcon color={theme.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -261,19 +302,42 @@ export default function LogScreen() {
       >
         {/* Describe meal input */}
         <View style={{
-          backgroundColor: theme.surface, borderRadius: 14, padding: 16, marginTop: 12,
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          backgroundColor: theme.surface, borderRadius: 14, padding: 12, marginTop: 12,
+          flexDirection: 'row', alignItems: 'center',
           borderWidth: 1, borderColor: theme.border,
         }}>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: theme.textTertiary }}>
-            Describe your meal...
-          </Text>
-          <TouchableOpacity style={{
-            width: 38, height: 38, borderRadius: 19,
-            backgroundColor: Colors.primary,
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <MicIcon />
+          <TextInput
+            value={mealDesc}
+            onChangeText={setMealDesc}
+            placeholder="Describe your meal... e.g. 2 roti with dal"
+            placeholderTextColor={theme.textTertiary}
+            multiline
+            style={{
+              flex: 1, fontFamily: 'Inter_400Regular', fontSize: 15,
+              color: theme.text, paddingVertical: 4, paddingRight: 8,
+              maxHeight: 80,
+            }}
+            editable={!describingMeal}
+            onSubmitEditing={handleDescribeMeal}
+            returnKeyType="send"
+          />
+          <TouchableOpacity
+            onPress={handleDescribeMeal}
+            disabled={describingMeal || !mealDesc.trim()}
+            style={{
+              width: 38, height: 38, borderRadius: 19,
+              backgroundColor: describingMeal || !mealDesc.trim() ? `${Colors.primary}60` : Colors.primary,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {describingMeal ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M22 2L11 13" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -299,15 +363,15 @@ export default function LogScreen() {
 
         {/* Quick Log */}
         <TouchableOpacity style={{
-          marginTop: 16, backgroundColor: '#0c1a3d', borderRadius: 14, padding: 16,
+          marginTop: 16, backgroundColor: theme.primaryBg, borderRadius: 14, padding: 16,
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-          borderWidth: 1, borderColor: '#1a2a5a',
+          borderWidth: 1, borderColor: theme.primaryBorder,
         }}>
           <View>
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
               Quick Log
             </Text>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: '#fff' }}>Recent Meals</Text>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text }}>Recent Meals</Text>
           </View>
           <ClockIcon />
         </TouchableOpacity>
@@ -368,8 +432,8 @@ export default function LogScreen() {
               borderWidth: 1, borderColor: theme.border,
             }}>
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                <Path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                <Path d="M17 2v6a4 4 0 01-4 4M17 2v20M21 2c0 4-2 8-4 8" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M17 2v6a4 4 0 01-4 4M17 2v20M21 2c0 4-2 8-4 8" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text, marginBottom: 6 }}>
@@ -394,8 +458,8 @@ export default function LogScreen() {
                   {/* Top row: badges */}
                   <View style={{ flexDirection: 'row', marginBottom: 8 }}>
                     {item.aiDetected && (
-                      <View style={{ backgroundColor: '#064e3b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 6 }}>
-                        <Text style={{ color: '#34d399', fontFamily: 'Inter_700Bold', fontSize: 8, letterSpacing: 1 }}>AI</Text>
+                      <View style={{ backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 6 }}>
+                        <Text style={{ color: theme.green, fontFamily: 'Inter_700Bold', fontSize: 8, letterSpacing: 1 }}>AI</Text>
                       </View>
                     )}
                     {itemShifa > 0 && (
@@ -419,7 +483,7 @@ export default function LogScreen() {
                     </View>
                     <TouchableOpacity onPress={() => deleteItem(item.id)} style={{ padding: 6 }}>
                       <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                        <Path d="M18 6L6 18M6 6l12 12" stroke="#444" strokeWidth={2} strokeLinecap="round" />
+                        <Path d="M18 6L6 18M6 6l12 12" stroke={theme.textTertiary} strokeWidth={2} strokeLinecap="round" />
                       </Svg>
                     </TouchableOpacity>
                   </View>
@@ -459,7 +523,7 @@ export default function LogScreen() {
               value={searchQ}
               onChangeText={(t) => { setSearchQ(t); searchFood(t); }}
               placeholder="Search foods..."
-              placeholderTextColor="#333"
+              placeholderTextColor={theme.textTertiary}
               autoFocus
               style={{
                 backgroundColor: theme.surface, borderRadius: 12, padding: 16,
@@ -487,11 +551,11 @@ export default function LogScreen() {
                       style={{
                         paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
                         marginRight: idx < SERVING_UNITS.length - 1 ? 6 : 0,
-                        backgroundColor: servingUnit === u.label ? Colors.primary : '#1a1a1a',
-                        borderWidth: 1, borderColor: servingUnit === u.label ? Colors.primary : '#2a2a2a',
+                        backgroundColor: servingUnit === u.label ? Colors.primary : theme.surface2,
+                        borderWidth: 1, borderColor: servingUnit === u.label ? Colors.primary : theme.border,
                       }}
                     >
-                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: servingUnit === u.label ? '#fff' : '#666' }}>
+                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: servingUnit === u.label ? '#fff' : theme.textSecondary }}>
                         {u.label}
                       </Text>
                     </TouchableOpacity>

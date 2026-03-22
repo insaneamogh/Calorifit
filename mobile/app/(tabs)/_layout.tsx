@@ -1,8 +1,10 @@
-import { Tabs } from 'expo-router';
-import { View } from 'react-native';
+import { useEffect } from 'react';
+import { Tabs, router } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
+import { useStore } from '../../store/useStore';
 import Svg, { Path, Circle, Rect, G, Line } from 'react-native-svg';
 
 function DashboardIcon({ focused, color }: { focused: boolean; color: string }) {
@@ -70,6 +72,22 @@ function ProfileIcon({ focused, color }: { focused: boolean; color: string }) {
 
 export default function TabsLayout() {
   const { theme, isDark } = useTheme();
+  const user = useStore((s) => s.user);
+  const isHydrated = useStore((s) => s.isHydrated);
+
+  useEffect(() => {
+    if (isHydrated && !user) {
+      router.replace('/(auth)/welcome');
+    }
+  }, [isHydrated, user]);
+
+  if (!isHydrated || !user) {
+    return (
+      <View style={{ flex: 1, backgroundColor: isDark ? '#000' : '#f2f2f7', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   const tabBarBg = isDark ? 'rgba(8,8,8,0.92)' : 'rgba(255,255,255,0.92)';
   const tabBarBorder = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
@@ -115,7 +133,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
       <Tabs.Screen name="log" options={{ title: 'Log' }} />
-      <Tabs.Screen name="scan" options={{ title: 'Scan' }} />
+      <Tabs.Screen name="scan" options={{ title: 'Scan', tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="stats" options={{ title: 'Stats' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
       <Tabs.Screen name="milestones" options={{ href: null }} />

@@ -72,6 +72,7 @@ const realAiAPI = {
   scanImage: (base64: string, mimeType = 'image/jpeg') =>
     api.post('/ai/scan-image', { base64, mimeType }),
   describeFood: (description: string) => api.post('/ai/describe-food', { description }),
+  lookupBarcode: (barcode: string) => api.post('/ai/barcode', { barcode }),
 };
 
 const realWaterAPI = {
@@ -86,6 +87,35 @@ const realProgressAPI = {
   getStats: () => api.get('/progress/stats'),
 };
 
+const realExerciseAPI = {
+  getDay: (date: string) => api.get(`/exercises?date=${date}`),
+  getWeek: () => api.get('/exercises/week'),
+  add: (data: any) => api.post('/exercises', data),
+  delete: (id: string) => api.delete(`/exercises/${id}`),
+};
+
+const realPantryAPI = {
+  getAll: () => api.get('/pantry'),
+  add: (data: any) => api.post('/pantry', data),
+  update: (id: string, data: any) => api.put(`/pantry/${id}`, data),
+  delete: (id: string) => api.delete(`/pantry/${id}`),
+};
+
+// Mock fallbacks for exercise and pantry (return empty arrays)
+const mockExerciseAPI = {
+  getDay: (_date: string) => Promise.resolve({ data: [] }),
+  getWeek: () => Promise.resolve({ data: { days: [], totalCalories: 0 } }),
+  add: (_data: any) => Promise.resolve({ data: {} }),
+  delete: (_id: string) => Promise.resolve({ data: { success: true } }),
+};
+
+const mockPantryAPI = {
+  getAll: () => Promise.resolve({ data: [] }),
+  add: (_data: any) => Promise.resolve({ data: {} }),
+  update: (_id: string, _data: any) => Promise.resolve({ data: {} }),
+  delete: (_id: string) => Promise.resolve({ data: { success: true } }),
+};
+
 // --- Export mock or real based on USE_MOCK flag ---
 export const authAPI   = USE_MOCK ? mockAuthAPI   : realAuthAPI;
 export const userAPI   = USE_MOCK ? mockUserAPI   : realUserAPI;
@@ -94,5 +124,7 @@ export const logsAPI   = USE_MOCK ? mockLogsAPI   : realLogsAPI;
 export const aiAPI     = USE_MOCK ? mockAiAPI     : realAiAPI;
 export const waterAPI  = USE_MOCK ? mockWaterAPI  : realWaterAPI;
 export const progressAPI = USE_MOCK ? mockProgressAPI : realProgressAPI;
+export const exerciseAPI = USE_MOCK ? mockExerciseAPI : realExerciseAPI;
+export const pantryAPI   = USE_MOCK ? mockPantryAPI   : realPantryAPI;
 
 export default api;

@@ -1,9 +1,12 @@
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
+import { progressAPI } from '../../services/api';
+import { useStore } from '../../store/useStore';
 
 function BoltIcon({ color = Colors.primary, size = 18 }: { color?: string; size?: number }) {
   return (
@@ -30,35 +33,192 @@ function BackIcon({ color = '#fff' }: { color?: string }) {
   );
 }
 
-function CheckCircleIcon({ color = '#10b981' }: { color?: string }) {
-  return (
-    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={10} fill={color} />
-      <Path d="M20 6L9 17l-5-5" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
+interface Stats {
+  streak: number;
+  avgCalories: number;
+  dailyCalGoal: number;
+  currentWeight: number;
+  goalWeight: number;
+  totalLost: number;
 }
 
-const AI_PLAN = [
-  { color: '#10b981', text: 'Increase fibre intake by adding 1 cup of spinach to lunch' },
-  { color: Colors.primary, text: 'Switch to complex carbs to support sustained energy levels' },
-  { color: '#f97316', text: 'Add magnesium-rich foods (almonds, seeds) pre-workout' },
-  { color: '#a855f7', text: 'Maintain current protein levels, showing great results' },
-];
+interface Tip {
+  color: string;
+  text: string;
+}
 
-const WEEKLY_TARGETS = [
-  { label: 'Calories', current: 2100, goal: 2400, unit: 'kcal', color: Colors.primary },
-  { label: 'Protein', current: 148, goal: 160, unit: 'g', color: '#f97316' },
-  { label: 'Water', current: 2.1, goal: 3, unit: 'L', color: '#60a5fa' },
-];
+function generateTips(
+  todayCalories: number,
+  todayProtein: number,
+  waterMl: number,
+  calGoal: number,
+  proteinGoal: number,
+  waterGoalMl: number,
+  streak: number,
+): Tip[] {
+  const tips: Tip[] = [];
 
-const MEAL_SUGGESTIONS = [
-  { name: 'Greek Quinoa Bowl', tag: 'High Fiber', tagColor: '#10b981', kcal: 420 },
-  { name: 'Wild Atlantic Salmon', tag: 'Omega-3', tagColor: Colors.primary, kcal: 380 },
-];
+  // Protein check
+  if (proteinGoal > 0 && todayProtein < proteinGoal * 0.8) {
+    tips.push({
+      color: '#f97316',
+      text: `Increase protein intake -- you're at ${Math.round(todayProtein)}g of your ${Math.round(proteinGoal)}g goal`,
+    });
+  } else if (proteinGoal > 0 && todayProtein >= proteinGoal * 0.8) {
+    tips.push({
+      color: '#10b981',
+      text: 'Protein intake is on track -- keep it up!',
+    });
+  }
+
+  // Calorie check
+  if (calGoal > 0 && todayCalories > calGoal * 1.1) {
+    tips.push({
+      color: '#f87171',
+      text: `You're over your calorie goal by ${Math.round(todayCalories - calGoal)} kcal -- consider lighter meals`,
+    });
+  } else if (calGoal > 0 && todayCalories > 0 && todayCalories <= calGoal) {
+    tips.push({
+      color: '#10b981',
+      text: 'Calorie intake is within your daily target',
+    });
+  }
+
+  // Water check
+  if (waterGoalMl > 0 && waterMl < waterGoalMl * 0.7) {
+    tips.push({
+      color: '#60a5fa',
+      text: `Stay hydrated -- you're at ${Math.round((waterMl / waterGoalMl) * 100)}% of your water goal`,
+    });
+  } else if (waterGoalMl > 0 && waterMl >= waterGoalMl * 0.7) {
+    tips.push({
+      color: '#10b981',
+      text: 'Good hydration today! Keep drinking water regularly',
+    });
+  }
+
+  // Streak check
+  if (streak > 7) {
+    tips.push({
+      color: '#a855f7',
+      text: `${streak}-day streak! Great consistency -- keep the momentum going`,
+    });
+  } else if (streak > 0) {
+    tips.push({
+      color: Colors.primary,
+      text: `${streak}-day streak -- log every day to build consistency`,
+    });
+  }
+
+  // Fallback if no tips generated
+  if (tips.length === 0) {
+    tips.push({
+      color: Colors.primary,
+      text: 'Start logging meals and water to get personalized tips',
+    });
+  }
+
+  return tips;
+}
 
 export default function CoachScreen() {
   const { theme } = useTheme();
+  const user = useStore((s) => s.user);
+  const todayLog = useStore((s) => s.todayLog);
+  const waterToday = useStore((s) => s.waterToday);
+
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [caloriesData, setCaloriesData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const calGoal = user?.dailyCalGoal || 0;
+  const proteinGoal = user?.dailyProteinGoal || 0;
+  const waterGoalMl = user?.dailyWaterGoalMl || 2500;
+
+  const todayCalories = todayLog?.totals?.calories || 0;
+  const todayProtein = todayLog?.totals?.protein || 0;
+  const waterLiters = +(waterToday / 1000).toFixed(1);
+  const waterGoalL = +(waterGoalMl / 1000).toFixed(1);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [statsRes, calRes] = await Promise.all([
+        progressAPI.getStats(),
+        progressAPI.getCalories(7),
+      ]);
+      setStats(statsRes.data);
+      setCaloriesData(calRes.data?.data || []);
+    } catch (err) {
+      console.log('Coach fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
+
+  const streak = stats?.streak || user?.streak || 0;
+
+  const tips = generateTips(
+    todayCalories,
+    todayProtein,
+    waterToday,
+    calGoal,
+    proteinGoal,
+    waterGoalMl,
+    streak,
+  );
+
+  // Compute a simple nutrition score (0-10) from today's data
+  const computeScore = () => {
+    if (calGoal === 0) return 0;
+    let score = 5; // base
+    // Calorie adherence
+    const calRatio = todayCalories / calGoal;
+    if (calRatio >= 0.8 && calRatio <= 1.1) score += 2;
+    else if (calRatio >= 0.5 && calRatio <= 1.3) score += 1;
+    // Protein adherence
+    if (proteinGoal > 0) {
+      const protRatio = todayProtein / proteinGoal;
+      if (protRatio >= 0.8) score += 1.5;
+      else if (protRatio >= 0.5) score += 0.5;
+    }
+    // Water
+    if (waterGoalMl > 0) {
+      const waterRatio = waterToday / waterGoalMl;
+      if (waterRatio >= 0.8) score += 1;
+      else if (waterRatio >= 0.5) score += 0.5;
+    }
+    // Streak bonus
+    if (streak > 7) score += 0.5;
+    return Math.min(10, Math.round(score * 10) / 10);
+  };
+
+  const score = computeScore();
+  const scoreDots = Math.min(5, Math.round(score / 2));
+
+  const weeklyTargets = [
+    { label: 'Calories', current: Math.round(todayCalories), goal: calGoal, unit: 'kcal', color: Colors.primary },
+    { label: 'Protein', current: Math.round(todayProtein), goal: Math.round(proteinGoal), unit: 'g', color: '#f97316' },
+    { label: 'Water', current: waterLiters, goal: waterGoalL, unit: 'L', color: '#60a5fa' },
+  ];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
@@ -93,13 +253,17 @@ export default function CoachScreen() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* Subtitle */}
         <Text style={{
           fontFamily: 'Inter_500Medium', fontSize: 14, color: theme.textSecondary,
           marginBottom: 20, lineHeight: 22,
         }}>
-          Max, your nutrition stands above 85% of your age group
+          {user?.name ? `${user.name}, ` : ''}
+          {streak > 0
+            ? `you're on a ${streak}-day logging streak`
+            : 'start logging to get personalized insights'}
         </Text>
 
         {/* Score Card */}
@@ -111,12 +275,12 @@ export default function CoachScreen() {
             fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary,
             letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 14,
           }}>
-            Mind Quality Score
+            Nutrition Score
           </Text>
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 8 }}>
             <Text style={{ fontFamily: 'Inter_900Black', fontSize: 72, color: Colors.primary, letterSpacing: -3 }}>
-              8.4
+              {score.toFixed(1)}
             </Text>
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 22, color: theme.textTertiary, marginBottom: 10, marginLeft: 4 }}>
               /10
@@ -124,7 +288,10 @@ export default function CoachScreen() {
           </View>
 
           <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: theme.textSecondary, textAlign: 'center', marginBottom: 18 }}>
-            Your nutrition is in the top 8% for your demographic
+            {score >= 8 ? 'Excellent nutrition today!'
+              : score >= 6 ? 'Good progress -- a few tweaks can help'
+              : score >= 4 ? 'Room for improvement -- check the tips below'
+              : 'Log more meals for an accurate score'}
           </Text>
 
           {/* Dot indicator */}
@@ -133,10 +300,8 @@ export default function CoachScreen() {
               <View
                 key={i}
                 style={{
-                  width: i < 4 ? 10 : 10,
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: i < 4 ? Colors.primary : theme.surface2,
+                  width: 10, height: 10, borderRadius: 5,
+                  backgroundColor: i < scoreDots ? Colors.primary : theme.surface2,
                   marginRight: i < 4 ? 6 : 0,
                 }}
               />
@@ -144,63 +309,57 @@ export default function CoachScreen() {
           </View>
         </View>
 
-        {/* AI Action Plan */}
+        {/* AI Tips */}
         <View style={{
-          backgroundColor: 'rgba(59,130,246,0.06)', borderRadius: 20, padding: 20,
-          borderWidth: 1, borderColor: 'rgba(59,130,246,0.15)', marginBottom: 20,
+          backgroundColor: theme.isDark ? 'rgba(59,130,246,0.06)' : 'rgba(59,130,246,0.08)',
+          borderRadius: 20, padding: 20,
+          borderWidth: 1,
+          borderColor: theme.isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.2)',
+          marginBottom: 20,
         }}>
           <Text style={{
             fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text, marginBottom: 16,
           }}>
-            AI Action Plan
+            Personalized Tips
           </Text>
 
-          {AI_PLAN.map((item, idx) => (
+          {tips.map((tip, idx) => (
             <View
               key={idx}
-              style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: idx < AI_PLAN.length - 1 ? 14 : 0 }}
+              style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: idx < tips.length - 1 ? 14 : 0 }}
             >
               <View style={{
-                width: 10, height: 10, borderRadius: 5, backgroundColor: item.color,
+                width: 10, height: 10, borderRadius: 5, backgroundColor: tip.color,
                 marginTop: 4, marginRight: 12,
               }} />
               <Text style={{
                 flex: 1, fontFamily: 'Inter_400Regular', fontSize: 13,
                 color: theme.textSecondary, lineHeight: 20,
               }}>
-                {item.text}
+                {tip.text}
               </Text>
             </View>
           ))}
-
-          <TouchableOpacity style={{
-            backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16,
-            alignItems: 'center', marginTop: 20,
-          }}>
-            <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 15 }}>
-              Execute Plan
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Weekly Targets */}
+        {/* Daily Targets */}
         <View style={{ marginBottom: 20 }}>
           <Text style={{
             fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary,
             letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 14,
           }}>
-            Weekly Targets
+            Today's Targets
           </Text>
 
-          {WEEKLY_TARGETS.map((target, idx) => {
-            const pct = Math.min(1, target.current / target.goal);
+          {weeklyTargets.map((target, idx) => {
+            const pct = target.goal > 0 ? Math.min(1, target.current / target.goal) : 0;
             return (
               <View
                 key={idx}
                 style={{
                   backgroundColor: theme.surface, borderRadius: 14, padding: 16,
                   borderWidth: 1, borderColor: theme.border,
-                  marginBottom: idx < WEEKLY_TARGETS.length - 1 ? 10 : 0,
+                  marginBottom: idx < weeklyTargets.length - 1 ? 10 : 0,
                 }}
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -212,7 +371,7 @@ export default function CoachScreen() {
                   </Text>
                 </View>
                 <View style={{ height: 6, backgroundColor: theme.surface2, borderRadius: 3, marginBottom: 8 }}>
-                  <View style={{ height: 6, backgroundColor: target.color, borderRadius: 3, width: `${pct * 100}%` }} />
+                  <View style={{ height: 6, backgroundColor: target.color, borderRadius: 3, width: `${pct * 100}%` as any }} />
                 </View>
                 <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: target.color }}>
                   {target.current}{target.unit}
@@ -222,43 +381,48 @@ export default function CoachScreen() {
           })}
         </View>
 
-        {/* Meal Suggestions */}
-        <View>
-          <Text style={{
-            fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary,
-            letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 14,
+        {/* Weekly Summary */}
+        {stats && (
+          <View style={{
+            backgroundColor: theme.surface, borderRadius: 16, padding: 18,
+            borderWidth: 1, borderColor: theme.border,
           }}>
-            Meal Suggestions
-          </Text>
-
-          <View style={{ flexDirection: 'row' }}>
-            {MEAL_SUGGESTIONS.map((meal, idx) => (
-              <View
-                key={idx}
-                style={{
-                  flex: 1, backgroundColor: theme.surface, borderRadius: 16, padding: 16,
-                  borderWidth: 1, borderColor: theme.border,
-                  marginRight: idx === 0 ? 10 : 0,
-                }}
-              >
-                <View style={{
-                  backgroundColor: `${meal.tagColor}15`, paddingHorizontal: 10, paddingVertical: 4,
-                  borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12,
-                }}>
-                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: meal.tagColor }}>
-                    {meal.tag}
-                  </Text>
-                </View>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 13, color: theme.text, marginBottom: 6, lineHeight: 18 }}>
-                  {meal.name}
+            <Text style={{
+              fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary,
+              letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 14,
+            }}>
+              Weekly Summary
+            </Text>
+            <View style={{ flexDirection: 'row' }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 4 }}>
+                  {stats.avgCalories || 0}
                 </Text>
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: theme.textTertiary }}>
-                  {meal.kcal} kcal
+                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>
+                  Avg kcal/day
                 </Text>
               </View>
-            ))}
+              <View style={{ width: 1, backgroundColor: theme.border, marginHorizontal: 12 }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 4 }}>
+                  {stats.totalLost > 0 ? `-${stats.totalLost}` : stats.totalLost < 0 ? `+${Math.abs(stats.totalLost)}` : '0'} kg
+                </Text>
+                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>
+                  Weight change
+                </Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: theme.border, marginHorizontal: 12 }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: Colors.primary, marginBottom: 4 }}>
+                  {streak}
+                </Text>
+                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>
+                  Day streak
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, TextInput, Modal, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
+import { exerciseAPI } from '../../services/api';
+import { useStore } from '../../store/useStore';
 
 function BellIcon({ color = '#666' }: { color?: string }) {
   return (
@@ -41,14 +43,6 @@ function DotsIcon({ color = '#666' }: { color?: string }) {
   );
 }
 
-function HeartPulseIcon({ color = '#60a5fa' }: { color?: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
 function AvatarIcon({ color = '#555' }: { color?: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -58,56 +52,162 @@ function AvatarIcon({ color = '#555' }: { color?: string }) {
   );
 }
 
-const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-const BAR_HEIGHTS = [55, 40, 80, 35, 60, 25, 20];
-const HIGHLIGHT_DAY = 2; // Wednesday
-
-type ExerciseType = 'strength' | 'cardio';
-
-interface StrengthExercise {
-  type: 'strength';
-  name: string;
-  category: string;
-  sets: number;
-  reps: number;
-  weight: number;
+function PlusIcon({ color = '#fff' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+  );
 }
 
-interface CardioExercise {
-  type: 'cardio';
-  name: string;
-  category: string;
-  duration: number;
-  avgHr: number;
-  burned: number;
+function CloseIcon({ color = '#fff' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M18 6L6 18M6 6l12 12" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
 }
 
-type Exercise = StrengthExercise | CardioExercise;
+function TrashIcon({ color = '#f87171' }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
-const EXERCISES: Exercise[] = [
-  {
-    type: 'strength',
-    name: 'Incline Bench Press',
-    category: 'Chest & Triceps',
-    sets: 4,
-    reps: 12,
-    weight: 85,
-  },
-  {
-    type: 'cardio',
-    name: 'HIIT Sprints',
-    category: 'Cardio Finish',
-    duration: 20,
-    avgHr: 162,
-    burned: 340,
-  },
-];
+interface Exercise {
+  id: string;
+  name: string;
+  category: string;
+  sets?: number | null;
+  reps?: number | null;
+  weight?: number | null;
+  duration?: number | null;
+  caloriesBurned?: number | null;
+  date: string;
+}
 
-type ToggleType = 'WEEK' | 'ACTIVE';
+interface WeekDay {
+  day: string;
+  calories: number;
+  count: number;
+}
+
+const CATEGORIES = ['chest', 'back', 'legs', 'shoulders', 'arms', 'cardio', 'core'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
 
 export default function WorkoutScreen() {
   const { theme } = useTheme();
-  const [perfToggle, setPerfToggle] = useState<ToggleType>('WEEK');
+  const todayLog = useStore((s) => s.todayLog);
+
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [weekData, setWeekData] = useState<WeekDay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [perfToggle, setPerfToggle] = useState<'WEEK' | 'ACTIVE'>('WEEK');
+
+  // Form state
+  const [formName, setFormName] = useState('');
+  const [formCategory, setFormCategory] = useState('chest');
+  const [formSets, setFormSets] = useState('');
+  const [formReps, setFormReps] = useState('');
+  const [formWeight, setFormWeight] = useState('');
+  const [formDuration, setFormDuration] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const isCardio = formCategory === 'cardio';
+
+  const totalBurned = exercises.reduce((s, e) => s + (e.caloriesBurned || 0), 0);
+  const eatenCalories = todayLog?.totals?.calories || 0;
+  const netCalories = Math.round(eatenCalories - totalBurned);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [dayRes, weekRes] = await Promise.all([
+        exerciseAPI.getDay(todayStr()),
+        exerciseAPI.getWeek(),
+      ]);
+      setExercises(dayRes.data || []);
+      setWeekData(weekRes.data?.days || []);
+    } catch (err) {
+      console.log('Exercise fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
+
+  const handleAdd = async () => {
+    if (!formName.trim()) return;
+    setSaving(true);
+    try {
+      const data: any = {
+        name: formName.trim(),
+        category: formCategory,
+        date: new Date().toISOString(),
+      };
+      if (isCardio) {
+        data.duration = parseInt(formDuration) || 0;
+      } else {
+        data.sets = parseInt(formSets) || 0;
+        data.reps = parseInt(formReps) || 0;
+        data.weight = parseFloat(formWeight) || 0;
+      }
+      const res = await exerciseAPI.add(data);
+      if (res.data) {
+        setExercises((prev) => [res.data, ...prev]);
+      }
+      // Reset form
+      setFormName('');
+      setFormSets('');
+      setFormReps('');
+      setFormWeight('');
+      setFormDuration('');
+      setShowAddModal(false);
+      // Re-fetch week data
+      exerciseAPI.getWeek().then((r) => setWeekData(r.data?.days || [])).catch(() => {});
+    } catch (err) {
+      Alert.alert('Error', 'Failed to add exercise');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await exerciseAPI.delete(id);
+      setExercises((prev) => prev.filter((e) => e.id !== id));
+      exerciseAPI.getWeek().then((r) => setWeekData(r.data?.days || [])).catch(() => {});
+    } catch {
+      Alert.alert('Error', 'Failed to delete exercise');
+    }
+  };
+
+  const maxBarCal = Math.max(...weekData.map((d) => d.calories), 1);
+  const todayDayIdx = (new Date().getDay() + 6) % 7; // 0=Mon
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
@@ -123,7 +223,6 @@ export default function WorkoutScreen() {
           >
             <BackIcon color={theme.textSecondary} />
           </TouchableOpacity>
-          {/* Avatar placeholder */}
           <View style={{
             width: 36, height: 36, borderRadius: 18, backgroundColor: theme.surface2,
             borderWidth: 1, borderColor: theme.border2,
@@ -143,39 +242,59 @@ export default function WorkoutScreen() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* Net Calories Card */}
         <View style={{
-          backgroundColor: '#0a0f1e', borderRadius: 24, padding: 24, marginBottom: 14,
-          borderWidth: 1, borderColor: '#1a2a4a',
+          backgroundColor: theme.isDark ? '#0a0f1e' : theme.surface,
+          borderRadius: 24, padding: 24, marginBottom: 14,
+          borderWidth: 1, borderColor: theme.isDark ? '#1a2a4a' : theme.border,
         }}>
           <Text style={{
-            fontFamily: 'Inter_600SemiBold', fontSize: 9, color: 'rgba(255,255,255,0.5)',
+            fontFamily: 'Inter_600SemiBold', fontSize: 9,
+            color: theme.isDark ? 'rgba(255,255,255,0.5)' : theme.textTertiary,
             letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 10,
           }}>
             Net Calories Today
           </Text>
-          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 52, color: '#fff', letterSpacing: -2, marginBottom: 14 }}>
-            1,420 kcal
+          <Text style={{
+            fontFamily: 'Inter_900Black', fontSize: 52,
+            color: theme.isDark ? '#fff' : theme.text,
+            letterSpacing: -2, marginBottom: 14,
+          }}>
+            {netCalories.toLocaleString()} kcal
           </Text>
           <View style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+              <Text style={{
+                fontFamily: 'Inter_600SemiBold', fontSize: 9,
+                color: theme.isDark ? 'rgba(255,255,255,0.4)' : theme.textTertiary,
+                letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4,
+              }}>
                 Eaten
               </Text>
-              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff' }}>
-                2,840
+              <Text style={{
+                fontFamily: 'Inter_700Bold', fontSize: 16,
+                color: theme.isDark ? '#fff' : theme.text,
+              }}>
+                {Math.round(eatenCalories).toLocaleString()}
               </Text>
             </View>
             <View style={{
-              width: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 16,
+              width: 1,
+              backgroundColor: theme.isDark ? 'rgba(255,255,255,0.1)' : theme.border,
+              marginHorizontal: 16,
             }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+              <Text style={{
+                fontFamily: 'Inter_600SemiBold', fontSize: 9,
+                color: theme.isDark ? 'rgba(255,255,255,0.4)' : theme.textTertiary,
+                letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4,
+              }}>
                 Burned
               </Text>
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#f97316' }}>
-                1,420
+                {Math.round(totalBurned).toLocaleString()}
               </Text>
             </View>
           </View>
@@ -198,7 +317,7 @@ export default function WorkoutScreen() {
               Sync Apple Health
             </Text>
             <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-              Last synced 2m ago
+              Auto-import workouts
             </Text>
           </View>
           <TouchableOpacity style={{
@@ -220,9 +339,8 @@ export default function WorkoutScreen() {
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text }}>
               Body Performance
             </Text>
-            {/* Toggle pills */}
             <View style={{ flexDirection: 'row', backgroundColor: theme.surface2, borderRadius: 10, padding: 3 }}>
-              {(['WEEK', 'ACTIVE'] as ToggleType[]).map((t) => (
+              {(['WEEK', 'ACTIVE'] as const).map((t) => (
                 <TouchableOpacity
                   key={t}
                   onPress={() => setPerfToggle(t)}
@@ -244,32 +362,40 @@ export default function WorkoutScreen() {
 
           {/* Bar chart */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 80, marginBottom: 10 }}>
-            {DAYS.map((day, idx) => (
-              <View key={day} style={{ alignItems: 'center', flex: 1 }}>
-                <View style={{
-                  width: 24, borderRadius: 6,
-                  backgroundColor: idx === HIGHLIGHT_DAY ? Colors.primary : theme.surface2,
-                  height: BAR_HEIGHTS[idx],
-                  ...(idx === HIGHLIGHT_DAY ? {
-                    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.4, shadowRadius: 6,
-                  } : {}),
-                }} />
-              </View>
-            ))}
+            {DAYS.map((day, idx) => {
+              const cal = weekData[idx]?.calories || 0;
+              const barH = maxBarCal > 0 ? Math.max(4, (cal / maxBarCal) * 80) : 4;
+              const isToday = idx === todayDayIdx;
+              return (
+                <View key={day} style={{ alignItems: 'center', flex: 1 }}>
+                  <View style={{
+                    width: 24, borderRadius: 6,
+                    backgroundColor: isToday ? Colors.primary : theme.surface2,
+                    height: barH,
+                    ...(isToday ? {
+                      shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.4, shadowRadius: 6,
+                    } : {}),
+                  }} />
+                </View>
+              );
+            })}
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            {DAYS.map((day, idx) => (
-              <View key={day} style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={{
-                  fontFamily: 'Inter_600SemiBold', fontSize: 8,
-                  color: idx === HIGHLIGHT_DAY ? Colors.primary : theme.textTertiary,
-                  letterSpacing: 0.5,
-                }}>
-                  {day}
-                </Text>
-              </View>
-            ))}
+            {DAYS.map((day, idx) => {
+              const isToday = idx === todayDayIdx;
+              return (
+                <View key={day} style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{
+                    fontFamily: 'Inter_600SemiBold', fontSize: 8,
+                    color: isToday ? Colors.primary : theme.textTertiary,
+                    letterSpacing: 0.5, textTransform: 'uppercase',
+                  }}>
+                    {day}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -278,87 +404,260 @@ export default function WorkoutScreen() {
           <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 17, color: theme.text, letterSpacing: -0.3 }}>
             Today's Log
           </Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowAddModal(true)}>
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: Colors.primary }}>
               ADD EXERCISE
             </Text>
           </TouchableOpacity>
         </View>
 
-        {EXERCISES.map((ex, idx) => (
-          <View
-            key={idx}
-            style={{
-              backgroundColor: theme.surface, borderRadius: 16, padding: 18,
-              borderWidth: 1, borderColor: theme.border,
-              marginBottom: idx < EXERCISES.length - 1 ? 10 : 0,
-            }}
-          >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-              <View>
-                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 4 }}>
-                  {ex.name}
-                </Text>
-                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: theme.textTertiary }}>
-                  {ex.category}
-                </Text>
+        {exercises.length === 0 ? (
+          <View style={{
+            backgroundColor: theme.surface, borderRadius: 16, padding: 32,
+            borderWidth: 1, borderColor: theme.border, alignItems: 'center',
+          }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: theme.textTertiary, marginBottom: 8 }}>
+              No exercises logged today
+            </Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textTertiary, textAlign: 'center' }}>
+              Tap "ADD EXERCISE" to log your first workout
+            </Text>
+          </View>
+        ) : (
+          exercises.map((ex, idx) => {
+            const isCardioEx = ex.category === 'cardio';
+            const burned = ex.caloriesBurned || 0;
+            return (
+              <View
+                key={ex.id}
+                style={{
+                  backgroundColor: theme.surface, borderRadius: 16, padding: 18,
+                  borderWidth: 1, borderColor: theme.border,
+                  marginBottom: idx < exercises.length - 1 ? 10 : 0,
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <View>
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 4 }}>
+                      {ex.name}
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: theme.textTertiary, textTransform: 'capitalize' }}>
+                      {ex.category}
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={{ padding: 4 }} onPress={() => {
+                    Alert.alert('Delete Exercise', `Remove "${ex.name}"?`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => handleDelete(ex.id) },
+                    ]);
+                  }}>
+                    <TrashIcon color={theme.textTertiary} />
+                  </TouchableOpacity>
+                </View>
+
+                {isCardioEx ? (
+                  <View style={{ flexDirection: 'row' }}>
+                    {[
+                      { label: 'DURATION', value: `${ex.duration || 0} min` },
+                      { label: 'BURNED', value: `${Math.round(burned)} kcal` },
+                    ].map((stat, sIdx) => (
+                      <View key={stat.label} style={{
+                        flex: 1, backgroundColor: theme.surface2, borderRadius: 10, padding: 12,
+                        alignItems: 'center', marginRight: sIdx < 1 ? 8 : 0,
+                      }}>
+                        <Text style={{
+                          fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary,
+                          letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6,
+                        }}>
+                          {stat.label}
+                        </Text>
+                        <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 15, color: theme.text }}>
+                          {stat.value}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row' }}>
+                    {[
+                      { label: 'SETS', value: String(ex.sets || 0) },
+                      { label: 'REPS', value: String(ex.reps || 0) },
+                      { label: 'WEIGHT', value: `${ex.weight || 0} kg` },
+                    ].map((stat, sIdx) => (
+                      <View key={stat.label} style={{
+                        flex: 1, backgroundColor: theme.surface2, borderRadius: 10, padding: 12,
+                        alignItems: 'center', marginRight: sIdx < 2 ? 8 : 0,
+                      }}>
+                        <Text style={{
+                          fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary,
+                          letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6,
+                        }}>
+                          {stat.label}
+                        </Text>
+                        <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: theme.text }}>
+                          {stat.value}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-              <TouchableOpacity style={{ padding: 4 }}>
-                <DotsIcon color={theme.textTertiary} />
+            );
+          })
+        )}
+      </ScrollView>
+
+      {/* Add Exercise Modal */}
+      <Modal visible={showAddModal} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: theme.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+            padding: 24, paddingBottom: 40,
+          }}>
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text }}>
+                Add Exercise
+              </Text>
+              <TouchableOpacity onPress={() => setShowAddModal(false)} style={{ padding: 4 }}>
+                <CloseIcon color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            {ex.type === 'strength' ? (
-              <View style={{ flexDirection: 'row' }}>
-                {[
-                  { label: 'SETS', value: String(ex.sets) },
-                  { label: 'REPS', value: String(ex.reps) },
-                  { label: 'WEIGHT', value: `${ex.weight} kg` },
-                ].map((stat, sIdx) => (
-                  <View key={stat.label} style={{
-                    flex: 1, backgroundColor: theme.surface2, borderRadius: 10, padding: 12,
-                    alignItems: 'center', marginRight: sIdx < 2 ? 8 : 0,
+            {/* Exercise Name */}
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: theme.textTertiary, marginBottom: 6, letterSpacing: 0.5 }}>
+              EXERCISE NAME
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                marginBottom: 16,
+              }}
+              placeholder="e.g. Bench Press"
+              placeholderTextColor={theme.textTertiary}
+              value={formName}
+              onChangeText={setFormName}
+            />
+
+            {/* Category Pills */}
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: theme.textTertiary, marginBottom: 8, letterSpacing: 0.5 }}>
+              CATEGORY
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setFormCategory(cat)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, marginRight: 8,
+                    backgroundColor: formCategory === cat ? Colors.primary : theme.surface,
+                    borderWidth: 1, borderColor: formCategory === cat ? Colors.primary : theme.border,
+                  }}
+                >
+                  <Text style={{
+                    fontFamily: 'Inter_600SemiBold', fontSize: 12,
+                    color: formCategory === cat ? '#fff' : theme.textSecondary,
+                    textTransform: 'capitalize',
                   }}>
-                    <Text style={{
-                      fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary,
-                      letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6,
-                    }}>
-                      {stat.label}
-                    </Text>
-                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 16, color: theme.text }}>
-                      {stat.value}
-                    </Text>
-                  </View>
-                ))}
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Dynamic fields */}
+            {isCardio ? (
+              <View>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: theme.textTertiary, marginBottom: 6, letterSpacing: 0.5 }}>
+                  DURATION (MINUTES)
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                    color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                    marginBottom: 16,
+                  }}
+                  placeholder="30"
+                  placeholderTextColor={theme.textTertiary}
+                  keyboardType="numeric"
+                  value={formDuration}
+                  onChangeText={setFormDuration}
+                />
               </View>
             ) : (
-              <View style={{ flexDirection: 'row' }}>
-                {[
-                  { label: 'DURATION', value: `${ex.duration} min` },
-                  { label: 'AVG HR', value: `${ex.avgHr}` },
-                  { label: 'BURNED', value: `${ex.burned} kcal` },
-                ].map((stat, sIdx) => (
-                  <View key={stat.label} style={{
-                    flex: 1, backgroundColor: theme.surface2, borderRadius: 10, padding: 12,
-                    alignItems: 'center', marginRight: sIdx < 2 ? 8 : 0,
-                  }}>
-                    <Text style={{
-                      fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textTertiary,
-                      letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6,
-                    }}>
-                      {stat.label}
-                    </Text>
-                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 15, color: theme.text }}>
-                      {stat.value}
-                    </Text>
-                  </View>
-                ))}
+              <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: theme.textTertiary, marginBottom: 6, letterSpacing: 0.5 }}>
+                    SETS
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                      color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                    }}
+                    placeholder="4"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    value={formSets}
+                    onChangeText={setFormSets}
+                  />
+                </View>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: theme.textTertiary, marginBottom: 6, letterSpacing: 0.5 }}>
+                    REPS
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                      color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                    }}
+                    placeholder="12"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    value={formReps}
+                    onChangeText={setFormReps}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 12, color: theme.textTertiary, marginBottom: 6, letterSpacing: 0.5 }}>
+                    WEIGHT (KG)
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: theme.surface, borderRadius: 12, padding: 14, fontSize: 15,
+                      color: theme.text, fontFamily: 'Inter_500Medium', borderWidth: 1, borderColor: theme.border,
+                    }}
+                    placeholder="60"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    value={formWeight}
+                    onChangeText={setFormWeight}
+                  />
+                </View>
               </View>
             )}
+
+            {/* Save Button */}
+            <TouchableOpacity
+              onPress={handleAdd}
+              disabled={saving || !formName.trim()}
+              style={{
+                backgroundColor: !formName.trim() ? theme.surface2 : Colors.primary,
+                borderRadius: 14, paddingVertical: 16, alignItems: 'center',
+              }}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: !formName.trim() ? theme.textTertiary : '#fff' }}>
+                  Save Exercise
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
-        ))}
-      </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
-

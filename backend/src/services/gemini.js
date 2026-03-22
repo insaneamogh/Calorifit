@@ -24,7 +24,7 @@ const FOOD_JSON_SCHEMA = `{
  * Analyze a food image using Gemini Vision
  */
 async function analyzeImage(base64Image, mimeType = 'image/jpeg') {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const prompt = `You are an expert nutritionist and dietitian AI with deep knowledge of global cuisines including Indian, Middle Eastern, Asian, Mediterranean, and Western foods.
 
@@ -77,7 +77,7 @@ Be conservative with calories — accuracy matters more than estimates. If you s
  * Parse a food description text into structured nutrition data
  */
 async function describeFood(description) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const prompt = `You are an expert nutritionist AI specializing in accurate calorie and macro calculation.
 

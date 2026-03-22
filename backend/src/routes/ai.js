@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const auth = require('../middleware/auth');
 const { analyzeImage, describeFood } = require('../services/gemini');
+const { lookupBarcode } = require('../services/barcode');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -42,6 +43,30 @@ router.post('/describe-food', auth, async (req, res) => {
   } catch (err) {
     console.error('Gemini text error:', err.message);
     res.status(500).json({ error: 'AI analysis failed: ' + err.message });
+  }
+});
+
+// POST /api/ai/barcode
+// Body: { barcode: "0123456789012" }
+router.post('/barcode', auth, async (req, res) => {
+  try {
+    const { barcode } = req.body;
+    if (!barcode) return res.status(400).json({ error: 'barcode is required' });
+
+    // 1. Try Open Food Facts first
+    const offResult = await lookupBarcode(barcode);
+    if (offResult) {
+      return res.json(offResult);
+    }
+
+    // 2. Fall back to Gemini text description
+    const geminiResult = await describeFood(
+      `Nutritional information for product with barcode ${barcode}`
+    );
+    res.json(geminiResult);
+  } catch (err) {
+    console.error('Barcode lookup error:', err.message);
+    res.status(500).json({ error: 'Barcode lookup failed: ' + err.message });
   }
 });
 

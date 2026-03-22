@@ -1,6 +1,7 @@
 import { View, Text } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Colors } from '../../constants/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
   eaten: number;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function CalorieRing({ eaten, burned, goal }: Props) {
+  const { theme } = useTheme();
   const left = Math.max(0, goal - eaten + burned);
   const pct = Math.min(1, eaten / (goal || 1));
   const radius = 90;
@@ -21,12 +23,12 @@ export default function CalorieRing({ eaten, burned, goal }: Props) {
         {/* Left label - Eaten */}
         <View style={{ alignItems: 'center', width: 70 }}>
           <Text style={{
-            fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#666',
+            fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textSecondary,
             letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4,
           }}>
             Eaten
           </Text>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: '#fff' }}>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: theme.text }}>
             {Math.round(eaten).toLocaleString()}
           </Text>
         </View>
@@ -43,7 +45,7 @@ export default function CalorieRing({ eaten, burned, goal }: Props) {
             {/* Track */}
             <Circle
               cx={100} cy={100} r={radius}
-              stroke="rgba(255,255,255,0.04)"
+              stroke={theme.surface3}
               strokeWidth={10}
               fill="transparent"
             />
@@ -60,12 +62,12 @@ export default function CalorieRing({ eaten, burned, goal }: Props) {
           </Svg>
           <View style={{ position: 'absolute', alignItems: 'center' }}>
             <Text style={{
-              fontFamily: 'Inter_900Black', fontSize: 38, color: '#fff', letterSpacing: -1.5,
+              fontFamily: 'Inter_900Black', fontSize: 38, color: theme.text, letterSpacing: -1.5,
             }}>
               {Math.round(left).toLocaleString()}
             </Text>
             <Text style={{
-              fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#555',
+              fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary,
               letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
             }}>
               Left
@@ -76,7 +78,7 @@ export default function CalorieRing({ eaten, burned, goal }: Props) {
         {/* Right label - Burned */}
         <View style={{ alignItems: 'center', width: 70 }}>
           <Text style={{
-            fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#666',
+            fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textSecondary,
             letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4,
           }}>
             Burned

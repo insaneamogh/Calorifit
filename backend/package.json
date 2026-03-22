@@ -9,7 +9,8 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:seed-foods": "node scripts/seedFoods.js"
   },
   "keywords": [],
   "author": "",

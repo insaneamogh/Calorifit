@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Alert, ActivityIndicator, Modal, Pressable, Switch,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
@@ -59,53 +60,59 @@ function FatIcon({ color = '#fff' }: { color?: string }) {
 }
 
 function PencilIcon() {
+  const { theme } = useTheme();
   return (
     <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-      <Path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="#444" strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#444" strokeWidth={1.8} />
+      <Path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke={theme.textTertiary} strokeWidth={1.8} />
     </Svg>
   );
 }
 
 function ActivityLevelIcon() {
+  const { theme } = useTheme();
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#888" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
 
 function GoalIcon() {
+  const { theme } = useTheme();
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={10} stroke="#888" strokeWidth={1.8} />
-      <Circle cx={12} cy={12} r={6} stroke="#888" strokeWidth={1.8} />
-      <Circle cx={12} cy={12} r={2} fill="#888" />
+      <Circle cx={12} cy={12} r={10} stroke={theme.textTertiary} strokeWidth={1.8} />
+      <Circle cx={12} cy={12} r={6} stroke={theme.textTertiary} strokeWidth={1.8} />
+      <Circle cx={12} cy={12} r={2} fill={theme.textTertiary} />
     </Svg>
   );
 }
 
 function BellIcon() {
+  const { theme } = useTheme();
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#888" strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M13.73 21a2 2 0 01-3.46 0" stroke="#888" strokeWidth={1.8} />
+      <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M13.73 21a2 2 0 01-3.46 0" stroke={theme.textTertiary} strokeWidth={1.8} />
     </Svg>
   );
 }
 
 function ShieldIcon() {
+  const { theme } = useTheme();
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#888" strokeWidth={1.8} />
+      <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke={theme.textTertiary} strokeWidth={1.8} />
     </Svg>
   );
 }
 
 function ChevronRight() {
+  const { theme } = useTheme();
   return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-      <Path d="M9 18l6-6-6-6" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M9 18l6-6-6-6" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -119,11 +126,32 @@ export default function ProfileScreen() {
   const [activityModal, setActivityModal] = useState(false);
   const [goalModal, setGoalModal] = useState(false);
   const [calModal, setCalModal] = useState(false);
+  const [proteinModal, setProteinModal] = useState(false);
+  const [carbModal, setCarbModal] = useState(false);
+  const [fatModal, setFatModal] = useState(false);
   const [goalWeightModal, setGoalWeightModal] = useState(false);
   const [tempCal, setTempCal] = useState('');
+  const [tempProtein, setTempProtein] = useState('');
+  const [tempCarb, setTempCarb] = useState('');
+  const [tempFat, setTempFat] = useState('');
   const [tempGoalWeight, setTempGoalWeight] = useState('');
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ fontFamily: 'Inter_500Medium', color: theme.textSecondary, marginTop: 16, fontSize: 14 }}>
+          Loading profile...
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.replace('/(auth)/welcome')}
+          style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.primary, borderRadius: 12 }}
+        >
+          <Text style={{ fontFamily: 'Inter_600SemiBold', color: '#fff', fontSize: 14 }}>Sign In</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   const updateSetting = async (data: any) => {
     setSaving(true);
@@ -177,16 +205,16 @@ export default function ProfileScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: theme.surface2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.border2, marginRight: 10 }}>
                 <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                  <Circle cx={12} cy={8} r={4} stroke="#888" strokeWidth={1.8} />
-                  <Path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="#888" strokeWidth={1.8} strokeLinecap="round" />
+                  <Circle cx={12} cy={8} r={4} stroke={theme.textTertiary} strokeWidth={1.8} />
+                  <Path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" />
                 </Svg>
               </View>
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text }}>Sanctuary</Text>
             </View>
             <TouchableOpacity style={{ padding: 4 }}>
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                <Circle cx={11} cy={11} r={8} stroke="#666" strokeWidth={1.8} />
-                <Path d="M21 21l-4.35-4.35" stroke="#666" strokeWidth={1.8} strokeLinecap="round" />
+                <Circle cx={11} cy={11} r={8} stroke={theme.textSecondary} strokeWidth={1.8} />
+                <Path d="M21 21l-4.35-4.35" stroke={theme.textSecondary} strokeWidth={1.8} strokeLinecap="round" />
               </Svg>
             </TouchableOpacity>
           </View>
@@ -245,10 +273,13 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           {/* Protein card */}
-          <View style={{
-            backgroundColor: theme.surface, borderRadius: 16, padding: 20, marginBottom: 10,
-            borderWidth: 1, borderColor: theme.border,
-          }}>
+          <TouchableOpacity
+            onPress={() => { setTempProtein(String(user.dailyProteinGoal)); setProteinModal(true); }}
+            style={{
+              backgroundColor: theme.surface, borderRadius: 16, padding: 20, marginBottom: 10,
+              borderWidth: 1, borderColor: theme.border,
+            }}
+          >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View>
                 <View style={{
@@ -268,17 +299,20 @@ export default function ProfileScreen() {
               </View>
               <PencilIcon />
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Carbs & Fats compact */}
           <View style={{ flexDirection: 'row' }}>
-            <View style={{
-              flex: 1, backgroundColor: theme.surface, borderRadius: 14, padding: 16,
-              borderWidth: 1, borderColor: theme.border, marginRight: 10,
-            }}>
+            <TouchableOpacity
+              onPress={() => { setTempCarb(String(user.dailyCarbGoal)); setCarbModal(true); }}
+              style={{
+                flex: 1, backgroundColor: theme.surface, borderRadius: 14, padding: 16,
+                borderWidth: 1, borderColor: theme.border, marginRight: 10,
+              }}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <View style={{ marginRight: 6 }}>
-                  <CarbIcon color="#888" />
+                  <CarbIcon color={theme.textTertiary} />
                 </View>
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Carbs</Text>
               </View>
@@ -286,14 +320,17 @@ export default function ProfileScreen() {
                 <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: theme.text }}>{user.dailyCarbGoal}g</Text>
                 <PencilIcon />
               </View>
-            </View>
-            <View style={{
-              flex: 1, backgroundColor: theme.surface, borderRadius: 14, padding: 16,
-              borderWidth: 1, borderColor: theme.border,
-            }}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { setTempFat(String(user.dailyFatGoal)); setFatModal(true); }}
+              style={{
+                flex: 1, backgroundColor: theme.surface, borderRadius: 14, padding: 16,
+                borderWidth: 1, borderColor: theme.border,
+              }}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <View style={{ marginRight: 6 }}>
-                  <FatIcon color="#888" />
+                  <FatIcon color={theme.textTertiary} />
                 </View>
                 <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Fats</Text>
               </View>
@@ -301,7 +338,7 @@ export default function ProfileScreen() {
                 <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: theme.text }}>{user.dailyFatGoal}g</Text>
                 <PencilIcon />
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -318,7 +355,9 @@ export default function ProfileScreen() {
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1, textTransform: 'uppercase' }}>Starting Weight</Text>
-              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>Jan 12</Text>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>
+                {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+              </Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
               <Text style={{ fontFamily: 'Inter_900Black', fontSize: 28, color: theme.text, marginRight: 4 }}>{user.currentWeight}</Text>
@@ -366,7 +405,7 @@ export default function ProfileScreen() {
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.tertiary }}>
               {weightToGoal}kg to go
             </Text>
-            <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 8 }}>
+            <View style={{ height: 4, backgroundColor: theme.surface3, borderRadius: 2, marginTop: 8 }}>
               <View style={{ height: 4, backgroundColor: Colors.tertiary, borderRadius: 2, width: '70%' }} />
             </View>
           </TouchableOpacity>
@@ -412,9 +451,7 @@ export default function ProfileScreen() {
                   <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.text, fontSize: 14 }}>{item.label}</Text>
                   <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12, marginTop: 2 }}>{item.desc}</Text>
                 </View>
-                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                  <Path d="M9 18l6-6-6-6" stroke="#444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                </Svg>
+                <ChevronRight />
               </TouchableOpacity>
             ))}
           </View>
@@ -445,7 +482,7 @@ export default function ProfileScreen() {
               { icon: <ActivityLevelIcon />, label: 'Activity Level', value: `${activityLabel} (${activityDesc})`, onPress: () => setActivityModal(true) },
               { icon: <GoalIcon />, label: 'Weekly Goal', value: `${goalLabel} ${goalDesc}`, onPress: () => setGoalModal(true) },
               { icon: <BellIcon />, label: 'Reminders', value: 'Breakfast, Lunch, Dinner, Hydration', onPress: () => Alert.alert('Coming Soon', 'Reminder settings will be available in the next update.') },
-              { icon: <ShieldIcon />, label: 'Privacy & Sync', value: 'Apple Health, Google Fit connected', onPress: () => Alert.alert('Privacy & Sync', 'Your data is stored securely and never shared.') },
+              { icon: <ShieldIcon />, label: 'Privacy & Sync', value: 'Data stored securely on cloud', onPress: () => Alert.alert('Privacy & Sync', 'Your data is encrypted and stored securely. Health integrations coming soon.') },
             ].map((s, i) => (
               <TouchableOpacity
                 key={s.label}
@@ -541,68 +578,177 @@ export default function ProfileScreen() {
 
       {/* Calorie Goal Modal */}
       <Modal visible={calModal} transparent animationType="slide">
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setCalModal(false)} />
-        <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Daily Calorie Goal</Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>Set a custom calorie target</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 20 }}>
-            <TextInput
-              value={tempCal}
-              onChangeText={setTempCal}
-              keyboardType="number-pad"
-              autoFocus
-              style={{ flex: 1, padding: 18, color: Colors.primary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
-            />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setCalModal(false)} />
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Daily Calorie Goal</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>Set a custom calorie target</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 20 }}>
+              <TextInput
+                value={tempCal}
+                onChangeText={setTempCal}
+                keyboardType="number-pad"
+                autoFocus
+                style={{ flex: 1, padding: 18, color: Colors.primary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
+              />
+            </View>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, textAlign: 'center', marginBottom: 24 }}>kcal / day</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                const cal = Number(tempCal);
+                if (!tempCal || isNaN(cal) || cal < 500 || cal > 10000) {
+                  Alert.alert('Invalid', 'Enter a value between 500 and 10,000 kcal');
+                  return;
+                }
+                setCalModal(false);
+                await updateSetting({ dailyCalGoal: cal });
+              }}
+              style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
+            </TouchableOpacity>
           </View>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, textAlign: 'center', marginBottom: 24 }}>kcal / day</Text>
-          <TouchableOpacity
-            onPress={async () => {
-              const cal = Number(tempCal);
-              if (!tempCal || isNaN(cal) || cal < 500 || cal > 10000) {
-                Alert.alert('Invalid', 'Enter a value between 500 and 10,000 kcal');
-                return;
-              }
-              setCalModal(false);
-              await updateSetting({ dailyCalGoal: cal });
-            }}
-            style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
-          >
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Protein Goal Modal */}
+      <Modal visible={proteinModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setProteinModal(false)} />
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Daily Protein Goal</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>Set your daily protein target</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 20 }}>
+              <TextInput
+                value={tempProtein}
+                onChangeText={setTempProtein}
+                keyboardType="number-pad"
+                autoFocus
+                style={{ flex: 1, padding: 18, color: Colors.tertiary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
+              />
+            </View>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, textAlign: 'center', marginBottom: 24 }}>grams / day</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                const val = Number(tempProtein);
+                if (!tempProtein || isNaN(val) || val < 10 || val > 500) {
+                  Alert.alert('Invalid', 'Enter a value between 10 and 500g');
+                  return;
+                }
+                setProteinModal(false);
+                await updateSetting({ dailyProteinGoal: val });
+              }}
+              style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Carb Goal Modal */}
+      <Modal visible={carbModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setCarbModal(false)} />
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Daily Carb Goal</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>Set your daily carbohydrate target</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 20 }}>
+              <TextInput
+                value={tempCarb}
+                onChangeText={setTempCarb}
+                keyboardType="number-pad"
+                autoFocus
+                style={{ flex: 1, padding: 18, color: Colors.primary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
+              />
+            </View>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, textAlign: 'center', marginBottom: 24 }}>grams / day</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                const val = Number(tempCarb);
+                if (!tempCarb || isNaN(val) || val < 10 || val > 1000) {
+                  Alert.alert('Invalid', 'Enter a value between 10 and 1000g');
+                  return;
+                }
+                setCarbModal(false);
+                await updateSetting({ dailyCarbGoal: val });
+              }}
+              style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Fat Goal Modal */}
+      <Modal visible={fatModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setFatModal(false)} />
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Daily Fat Goal</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>Set your daily fat target</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 20 }}>
+              <TextInput
+                value={tempFat}
+                onChangeText={setTempFat}
+                keyboardType="number-pad"
+                autoFocus
+                style={{ flex: 1, padding: 18, color: '#f97316', fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
+              />
+            </View>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, textAlign: 'center', marginBottom: 24 }}>grams / day</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                const val = Number(tempFat);
+                if (!tempFat || isNaN(val) || val < 10 || val > 500) {
+                  Alert.alert('Invalid', 'Enter a value between 10 and 500g');
+                  return;
+                }
+                setFatModal(false);
+                await updateSetting({ dailyFatGoal: val });
+              }}
+              style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Goal Weight Modal */}
       <Modal visible={goalWeightModal} transparent animationType="slide">
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setGoalWeightModal(false)} />
-        <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Goal Weight</Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>What is your target weight?</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 24 }}>
-            <TextInput
-              value={tempGoalWeight}
-              onChangeText={setTempGoalWeight}
-              keyboardType="decimal-pad"
-              autoFocus
-              style={{ flex: 1, padding: 18, color: Colors.tertiary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
-            />
-            <Text style={{ color: theme.textTertiary, paddingRight: 18, fontFamily: 'Inter_500Medium' }}>kg</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setGoalWeightModal(false)} />
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48 }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Goal Weight</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 14, marginBottom: 24 }}>What is your target weight?</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface2, borderRadius: 14, borderWidth: 1, borderColor: theme.border, marginBottom: 24 }}>
+              <TextInput
+                value={tempGoalWeight}
+                onChangeText={setTempGoalWeight}
+                keyboardType="decimal-pad"
+                autoFocus
+                style={{ flex: 1, padding: 18, color: Colors.tertiary, fontFamily: 'Inter_900Black', fontSize: 36, textAlign: 'center', letterSpacing: -1 }}
+              />
+              <Text style={{ color: theme.textTertiary, paddingRight: 18, fontFamily: 'Inter_500Medium' }}>kg</Text>
+            </View>
+            <TouchableOpacity
+              onPress={async () => {
+                const gw = Number(tempGoalWeight);
+                if (!tempGoalWeight || isNaN(gw) || gw < 20 || gw > 300) {
+                  Alert.alert('Invalid', 'Enter a valid goal weight');
+                  return;
+                }
+                setGoalWeightModal(false);
+                await updateSetting({ goalWeight: gw });
+              }}
+              style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={async () => {
-              const gw = Number(tempGoalWeight);
-              if (!tempGoalWeight || isNaN(gw) || gw < 20 || gw > 300) {
-                Alert.alert('Invalid', 'Enter a valid goal weight');
-                return;
-              }
-              setGoalWeightModal(false);
-              await updateSetting({ goalWeight: gw });
-            }}
-            style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
-          >
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

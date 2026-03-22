@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Circle, Rect, G, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Line } from 'react-native-svg';
-import { progressAPI } from '../../services/api';
+import { progressAPI, exerciseAPI, waterAPI } from '../../services/api';
 import { useStore } from '../../store/useStore';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,24 +11,28 @@ const { width } = Dimensions.get('window');
 const CHART_W = width - 48;
 
 export default function StatsScreen() {
-  const { user } = useStore();
+  const { user, waterToday } = useStore();
   const { theme } = useTheme();
   const [stats, setStats] = useState<any>(null);
   const [weightData, setWeightData] = useState<any[]>([]);
   const [caloriesData, setCaloriesData] = useState<any[]>([]);
+  const [exerciseCals, setExerciseCals] = useState(0);
   const [period, setPeriod] = useState<7 | 30>(7);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [statsRes, weightRes, calRes] = await Promise.all([
+      const [statsRes, weightRes, calRes, exRes] = await Promise.all([
         progressAPI.getStats(),
         progressAPI.getWeight(30),
         progressAPI.getCalories(period),
+        exerciseAPI.getDay(new Date().toISOString().split('T')[0]).catch(() => ({ data: [] })),
       ]);
       setStats(statsRes.data);
       setWeightData(weightRes.data || []);
       setCaloriesData(calRes.data?.data || []);
+      const exData = Array.isArray(exRes.data) ? exRes.data : [];
+      setExerciseCals(exData.reduce((s: number, e: any) => s + (e.caloriesBurned || 0), 0));
     } catch (e) { console.log(e); }
   }, [period]);
 
@@ -57,11 +61,15 @@ export default function StatsScreen() {
   const barSlot = CHART_W / Math.max(bars.length, 7);
   const barW = barSlot * 0.55;
 
+  const hydrationL = ((waterToday || 0) / 1000).toFixed(1);
+  const hydrationGoalL = ((user?.dailyWaterGoalMl || 2500) / 1000).toFixed(1);
+  const hydrationPct = Math.round(((waterToday || 0) / (user?.dailyWaterGoalMl || 2500)) * 100);
+
   const bioMarkers = [
-    { label: 'Resting HR', value: '62', unit: 'bpm', sub: '3 bpm', color: theme.red },
-    { label: 'Active Cal', value: '840', unit: '', sub: '+18%', color: Colors.primary },
-    { label: 'Body Fat', value: '18.2', unit: '%', sub: '-0.5%', color: theme.green },
-    { label: 'Hydration', value: '2.4L', unit: '', sub: 'Avg', color: '#60a5fa' },
+    { label: 'Streak', value: String(streak), unit: 'd', sub: streak >= 7 ? 'On fire!' : 'Keep going', color: theme.orange },
+    { label: 'Active Cal', value: exerciseCals > 0 ? String(Math.round(exerciseCals)) : '--', unit: '', sub: exerciseCals > 0 ? 'Burned today' : 'Log exercise', color: Colors.primary },
+    { label: 'Avg Intake', value: avgCals > 0 ? String(avgCals) : '--', unit: '', sub: avgCals > 0 ? 'kcal/day' : 'No data', color: theme.green },
+    { label: 'Hydration', value: `${hydrationL}L`, unit: '', sub: `${hydrationPct}% of ${hydrationGoalL}L`, color: '#60a5fa' },
   ];
 
   return (
@@ -240,11 +248,17 @@ export default function StatsScreen() {
           <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary, marginBottom: 16 }}>
             {avgCals > 0 ? `${Math.round(avgCals).toLocaleString()} kcal avg/day` : 'Log meals to see averages'}
           </Text>
-          {[
-            { label: 'Protein', value: user?.dailyProteinGoal || 150, goal: user?.dailyProteinGoal || 150, color: Colors.primary },
-            { label: 'Carbs', value: user?.dailyCarbGoal || 210, goal: user?.dailyCarbGoal || 250, color: theme.green },
-            { label: 'Fats', value: user?.dailyFatGoal || 65, goal: user?.dailyFatGoal || 80, color: theme.orange },
-          ].map((m) => (
+          {(() => {
+            const days = caloriesData.length || 1;
+            const avgP = Math.round(caloriesData.reduce((s, d) => s + (d.protein || 0), 0) / days);
+            const avgC = Math.round(caloriesData.reduce((s, d) => s + (d.carbs || 0), 0) / days);
+            const avgF = Math.round(caloriesData.reduce((s, d) => s + (d.fat || 0), 0) / days);
+            return [
+              { label: 'Protein', value: avgP || 0, goal: user?.dailyProteinGoal || 150, color: Colors.primary },
+              { label: 'Carbs', value: avgC || 0, goal: user?.dailyCarbGoal || 250, color: theme.green },
+              { label: 'Fats', value: avgF || 0, goal: user?.dailyFatGoal || 65, color: theme.orange },
+            ];
+          })().map((m) => (
             <View key={m.label} style={{ marginBottom: 14 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                 <Text style={{ fontFamily: 'Inter_500Medium', color: theme.textSecondary, fontSize: 13 }}>{m.label}</Text>
@@ -263,7 +277,7 @@ export default function StatsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 15, color: theme.text, marginBottom: 3 }}>Protein Efficiency</Text>
               <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary }}>
-                You're averaging {user?.dailyProteinGoal || 150}g/day
+                {caloriesData.length > 0 ? `Averaging ${Math.round(caloriesData.reduce((s, d) => s + (d.protein || 0), 0) / caloriesData.length)}g/day` : 'Start logging to see trends'}
               </Text>
             </View>
             <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(59,130,246,0.2)', alignItems: 'center', justifyContent: 'center' }}>

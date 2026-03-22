@@ -70,14 +70,6 @@ function WaterDropIcon() {
   );
 }
 
-// Trash icon for water reset
-function TrashIcon() {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-      <Path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" stroke="rgba(255,255,255,0.5)" strokeWidth={1.8} strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 export default function Dashboard() {
   const { user, todayLog, waterToday, setTodayLog, setWaterToday } = useStore();
@@ -156,8 +148,8 @@ export default function Dashboard() {
         </View>
         <TouchableOpacity style={{ padding: 4 }}>
           <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Circle cx={11} cy={11} r={8} stroke="#666" strokeWidth={1.8} />
-            <Path d="M21 21l-4.35-4.35" stroke="#666" strokeWidth={1.8} strokeLinecap="round" />
+            <Circle cx={11} cy={11} r={8} stroke={theme.textSecondary} strokeWidth={1.8} />
+            <Path d="M21 21l-4.35-4.35" stroke={theme.textSecondary} strokeWidth={1.8} strokeLinecap="round" />
           </Svg>
         </TouchableOpacity>
       </View>
@@ -288,7 +280,7 @@ export default function Dashboard() {
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View>
-                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: '#555', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textSecondary, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
                     Daily Shifa Index
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
@@ -316,8 +308,8 @@ export default function Dashboard() {
                   const mRating = getShifaRating(ms.shifaIndex);
                   const mColor = getShifaColor(mRating);
                   return (
-                    <View key={m} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 10, alignItems: 'center', marginRight: 8 }}>
-                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
+                    <View key={m} style={{ flex: 1, backgroundColor: theme.surface3, borderRadius: 10, padding: 10, alignItems: 'center', marginRight: 8 }}>
+                      <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 8, color: theme.textSecondary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
                         {m.slice(0, 4)}
                       </Text>
                       <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: mColor }}>{ms.shifaIndex}</Text>
@@ -331,8 +323,8 @@ export default function Dashboard() {
 
         {/* Hydration Card */}
         <View style={{
-          backgroundColor: '#0c1a3d', borderRadius: 18, padding: 18, marginTop: 18,
-          borderWidth: 1, borderColor: '#1a2a5a',
+          backgroundColor: theme.primaryBg, borderRadius: 18, padding: 18, marginTop: 18,
+          borderWidth: 1, borderColor: theme.primaryBorder,
         }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -341,26 +333,28 @@ export default function Dashboard() {
               </View>
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 24, color: '#fff', marginRight: 4 }}>
+                  <Text style={{ fontFamily: 'Inter_900Black', fontSize: 24, color: theme.text, marginRight: 4 }}>
                     {waterConsumed.toFixed(1)}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: theme.textTertiary }}>
                     / {waterGoal}L
                   </Text>
                 </View>
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase' }}>
                   Hydration Goal
                 </Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity style={{ padding: 6, marginRight: 8 }}>
-                <TrashIcon />
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" stroke={theme.textTertiary} strokeWidth={1.8} strokeLinecap="round" />
+                </Svg>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => addWater(250)}
                 style={{
-                  backgroundColor: 'rgba(59,130,246,0.2)', borderRadius: 10,
+                  backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 10,
                   paddingHorizontal: 14, paddingVertical: 8,
                   flexDirection: 'row', alignItems: 'center',
                   borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)',
@@ -370,7 +364,7 @@ export default function Dashboard() {
               </TouchableOpacity>
             </View>
           </View>
-          <View style={{ height: 4, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 2, marginTop: 14 }}>
+          <View style={{ height: 4, backgroundColor: theme.surface3, borderRadius: 2, marginTop: 14 }}>
             <View style={{
               height: 4, backgroundColor: '#3b82f6', borderRadius: 2,
               width: `${Math.min(100, (waterConsumed / waterGoal) * 100)}%`,

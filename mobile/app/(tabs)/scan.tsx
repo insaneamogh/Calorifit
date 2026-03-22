@@ -149,7 +149,8 @@ export default function ScanScreen() {
     setBarcodeScanned(true);
     setScanning(true);
     try {
-      const res = await aiAPI.describeFood(`Food with barcode/UPC: ${data}. Identify this product and provide nutritional info per serving.`);
+      // Use dedicated barcode lookup (Open Food Facts → Gemini fallback)
+      const res = await aiAPI.lookupBarcode(data);
       setResults(res.data.foods || []);
     } catch (err: any) {
       Alert.alert('Barcode not found', `Barcode: ${data}\n\nCould not identify this product.`, [

@@ -1,9 +1,14 @@
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
+import { useStore } from '../../store/useStore';
+import { progressAPI, logsAPI, waterAPI } from '../../services/api';
+
+const today = () => new Date().toISOString().split('T')[0];
 
 function BoltIcon({ color = '#fff', size = 20 }: { color?: string; size?: number }) {
   return (
@@ -66,77 +71,124 @@ function SunIcon({ color = '#10b981' }: { color?: string }) {
   );
 }
 
-function LeafIcon({ color = '#10b981' }: { color?: string }) {
+function ScaleIcon({ color = '#10b981' }: { color?: string }) {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path d="M17 8C8 10 5.9 16.17 3.82 19.34a1 1 0 001.64 1.16C7 19 9 17 12 16c-1.5 2-2 4-2 4s3-2 5-5c1.5 2 1.5 4 1.5 4s2-3 2-7c0-3.5-1.5-4.5-1.5-4.5z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M16 16l-4-4-4 4" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M12 12V20" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 15.25" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
-
-function ShieldIcon({ color = '#94a3b8' }: { color?: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function UsersIcon({ color = '#cd7f32' }: { color?: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Circle cx={9} cy={7} r={4} stroke={color} strokeWidth={1.8} />
-      <Path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-const currentXP = 19350;
-const nextRankXP = 20000;
-const xpProgress = currentXP / nextRankXP;
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const COMPLETED_DAYS = [true, true, true, true, true, false, false];
 
-const CHALLENGES = [
-  {
-    title: 'Hydration Hero',
-    desc: 'Drink 3L Today',
-    icon: <WaterIcon />,
-    progress: 0.8,
-    progressColor: Colors.primary,
-    tag: '24 hrs left',
-    tagColor: '#3b82f6',
-  },
-  {
-    title: 'Protein Power',
-    desc: 'Hit 150g Protein',
-    icon: <DumbbellIcon />,
-    progress: 0.65,
-    progressColor: '#f97316',
-    tag: '2 Days',
-    tagColor: '#f97316',
-  },
-  {
-    title: 'Morning Warrior',
-    desc: 'Log by 9AM',
-    icon: <SunIcon />,
-    progress: 1.0,
-    progressColor: '#10b981',
-    tag: 'Complete!',
-    tagColor: '#10b981',
-  },
-];
-
-const TROPHIES = [
-  { title: 'Veggie Master', icon: <LeafIcon color="#10b981" />, bg: '#78350f', border: '#d97706' },
-  { title: '30 Day Warrior', icon: <ShieldIcon color="#94a3b8" />, bg: '#1e293b', border: '#94a3b8' },
-  { title: 'Team Momentum', icon: <UsersIcon color="#cd7f32" />, bg: '#292524', border: '#cd7f32' },
-];
+interface StatsData {
+  streak: number;
+  startWeight?: number;
+  currentWeight?: number;
+  goalWeight?: number;
+  totalLost: number;
+  avgCalories: number;
+  dailyCalGoal?: number;
+}
 
 export default function MilestonesScreen() {
   const { theme } = useTheme();
+  const { user, todayLog, waterToday } = useStore();
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [weeklyDays, setWeeklyDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [statsRes, calRes] = await Promise.all([
+        progressAPI.getStats(),
+        progressAPI.getCalories(7),
+      ]);
+      setStats(statsRes.data);
+
+      // Build 7-day activity booleans (Mon→Sun of current week)
+      const calData: { date: string; calories: number }[] = calRes.data.data || [];
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0=Sun
+      // Build Mon-indexed: Monday=0..Sunday=6
+      const days: boolean[] = [false, false, false, false, false, false, false];
+      for (const entry of calData) {
+        const d = new Date(entry.date);
+        const dow = d.getDay(); // 0=Sun
+        const monIdx = dow === 0 ? 6 : dow - 1; // convert to Mon=0 index
+        // Only include days in the current week
+        const diffDays = Math.round((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays < 7 && entry.calories > 0) {
+          days[monIdx] = true;
+        }
+      }
+      setWeeklyDays(days);
+    } catch (err: any) {
+      console.error('Milestones load error:', err.message);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const streak = stats?.streak ?? 0;
+  const totalLost = stats?.totalLost ?? 0;
+  const avgCalories = stats?.avgCalories ?? 0;
+  const calGoal = stats?.dailyCalGoal ?? user?.dailyCalGoal ?? 2000;
+  const proteinGoal = user?.dailyProteinGoal ?? 150;
+  const waterGoalMl = user?.dailyWaterGoalMl ?? 2500;
+
+  const todayProtein = todayLog?.totals?.protein ?? 0;
+  const todayWaterMl = waterToday ?? 0;
+
+  // Weight progress
+  const startWeight = stats?.startWeight;
+  const currentWeight = stats?.currentWeight;
+  const goalWeight = stats?.goalWeight ?? user?.goalWeight;
+  const weightRange = startWeight && goalWeight ? Math.abs(startWeight - goalWeight) : 0;
+  const weightProgress = weightRange > 0 ? Math.min(1, Math.abs(totalLost) / weightRange) : 0;
+
+  // Challenges derived from real data
+  const waterProgress = Math.min(1, todayWaterMl / waterGoalMl);
+  const proteinProgress = Math.min(1, todayProtein / (proteinGoal || 1));
+  const calProgress = Math.min(1, avgCalories / (calGoal || 1));
+
+  const CHALLENGES = [
+    {
+      title: 'Hydration Hero',
+      desc: `Drink ${(waterGoalMl / 1000).toFixed(1)}L Today`,
+      icon: <WaterIcon />,
+      progress: waterProgress,
+      progressColor: Colors.primary,
+      tag: waterProgress >= 1 ? 'Complete!' : `${Math.round(waterProgress * 100)}%`,
+      tagColor: waterProgress >= 1 ? '#10b981' : '#3b82f6',
+    },
+    {
+      title: 'Protein Power',
+      desc: `Hit ${proteinGoal}g Protein`,
+      icon: <DumbbellIcon />,
+      progress: proteinProgress,
+      progressColor: '#f97316',
+      tag: proteinProgress >= 1 ? 'Complete!' : `${Math.round(todayProtein)}g / ${proteinGoal}g`,
+      tagColor: proteinProgress >= 1 ? '#10b981' : '#f97316',
+    },
+    {
+      title: 'Calorie Consistency',
+      desc: `Avg ${calGoal} kcal / day`,
+      icon: <SunIcon color="#10b981" />,
+      progress: calProgress,
+      progressColor: '#10b981',
+      tag: avgCalories > 0 ? `${avgCalories} avg kcal` : 'No data yet',
+      tagColor: '#10b981',
+    },
+  ];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
@@ -146,10 +198,7 @@ export default function MilestonesScreen() {
         paddingHorizontal: 24, paddingVertical: 14,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ marginRight: 12, padding: 4 }}
-          >
+          <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12, padding: 4 }}>
             <BackIcon color={theme.textSecondary} />
           </TouchableOpacity>
           <View style={{
@@ -160,7 +209,7 @@ export default function MilestonesScreen() {
             <BoltIcon color={Colors.primary} size={16} />
           </View>
           <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: theme.text, letterSpacing: -0.5 }}>
-            Kinetic Sanctuary
+            Milestones
           </Text>
         </View>
         <TouchableOpacity style={{ padding: 4 }}>
@@ -171,8 +220,9 @@ export default function MilestonesScreen() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        {/* Current Progression */}
+        {/* Weight Progress Card */}
         <View style={{
           backgroundColor: theme.surface, borderRadius: 20, padding: 20, marginTop: 4,
           borderWidth: 1, borderColor: theme.border,
@@ -181,50 +231,80 @@ export default function MilestonesScreen() {
             fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary,
             letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 10,
           }}>
-            Current Progression
-          </Text>
-          <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: theme.text, letterSpacing: -1, marginBottom: 6 }}>
-            Elite Level 42
-          </Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: theme.textSecondary, lineHeight: 20, marginBottom: 18 }}>
-            You are 650 XP away from reaching Master Rank. Keep pushing your limits.
+            Weight Progress
           </Text>
 
-          {/* XP Progress Bar */}
-          <View style={{ marginBottom: 16 }}>
-            <View style={{ height: 8, backgroundColor: theme.surface2, borderRadius: 4 }}>
-              <View style={{
-                height: 8, backgroundColor: Colors.primary, borderRadius: 4,
-                width: `${xpProgress * 100}%`,
-              }} />
-            </View>
-          </View>
+          {currentWeight ? (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 6 }}>
+                <Text style={{ fontFamily: 'Inter_900Black', fontSize: 30, color: theme.text, letterSpacing: -1, marginRight: 8 }}>
+                  {currentWeight.toFixed(1)} kg
+                </Text>
+                {totalLost !== 0 && (
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: totalLost > 0 ? '#10b981' : '#f97316' }}>
+                    {totalLost > 0 ? `-${totalLost}` : `+${Math.abs(totalLost)}`} kg
+                  </Text>
+                )}
+              </View>
+              {goalWeight && (
+                <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: theme.textSecondary, lineHeight: 20, marginBottom: 18 }}>
+                  {totalLost > 0
+                    ? `${totalLost} kg lost toward your ${goalWeight} kg goal. Keep going!`
+                    : `Goal: ${goalWeight} kg — log your weight to track progress.`}
+                </Text>
+              )}
 
-          {/* Stats row */}
-          <View style={{ flexDirection: 'row' }}>
-            <View style={{
-              flex: 1, backgroundColor: theme.surface2, borderRadius: 12, padding: 14,
-              alignItems: 'center', marginRight: 10,
-            }}>
-              <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: Colors.primary, letterSpacing: -0.5 }}>
-                19,350 XP
-              </Text>
-              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary, marginTop: 4 }}>
-                Total XP
-              </Text>
-            </View>
-            <View style={{
-              flex: 1, backgroundColor: theme.surface2, borderRadius: 12, padding: 14,
-              alignItems: 'center',
-            }}>
-              <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: theme.text, letterSpacing: -0.5 }}>
-                Rank: 450
-              </Text>
-              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary, marginTop: 4 }}>
-                Global Rank
-              </Text>
-            </View>
-          </View>
+              {/* Weight Progress Bar */}
+              {weightRange > 0 && (
+                <View style={{ marginBottom: 16 }}>
+                  <View style={{ height: 8, backgroundColor: theme.surface2, borderRadius: 4 }}>
+                    <View style={{
+                      height: 8, backgroundColor: Colors.primary, borderRadius: 4,
+                      width: `${weightProgress * 100}%`,
+                    }} />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>
+                      Start: {startWeight?.toFixed(1)} kg
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary }}>
+                      Goal: {goalWeight} kg
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Stats row */}
+              <View style={{ flexDirection: 'row' }}>
+                <View style={{
+                  flex: 1, backgroundColor: theme.surface2, borderRadius: 12, padding: 14,
+                  alignItems: 'center', marginRight: 10,
+                }}>
+                  <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: Colors.primary, letterSpacing: -0.5 }}>
+                    {streak} days
+                  </Text>
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary, marginTop: 4 }}>
+                    Current Streak
+                  </Text>
+                </View>
+                <View style={{
+                  flex: 1, backgroundColor: theme.surface2, borderRadius: 12, padding: 14,
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: theme.text, letterSpacing: -0.5 }}>
+                    {avgCalories > 0 ? avgCalories.toLocaleString() : '--'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: theme.textTertiary, marginTop: 4 }}>
+                    Avg kcal / day
+                  </Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: theme.textSecondary, lineHeight: 22 }}>
+              Log your weight to start tracking progress toward your goal.
+            </Text>
+          )}
         </View>
 
         {/* Daily Momentum */}
@@ -236,7 +316,6 @@ export default function MilestonesScreen() {
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: theme.text }}>
               Daily Momentum
             </Text>
-            {/* Fire streak badge - no emoji, SVG fire */}
             <View style={{
               flexDirection: 'row', alignItems: 'center',
               backgroundColor: 'rgba(249,115,22,0.12)', paddingHorizontal: 12, paddingVertical: 6,
@@ -246,7 +325,7 @@ export default function MilestonesScreen() {
                 <FireIcon />
               </View>
               <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#f97316' }}>
-                124 Days
+                {streak} {streak === 1 ? 'Day' : 'Days'}
               </Text>
             </View>
           </View>
@@ -257,12 +336,12 @@ export default function MilestonesScreen() {
               <View key={idx} style={{ alignItems: 'center' }}>
                 <View style={{
                   width: 38, height: 38, borderRadius: 19,
-                  backgroundColor: COMPLETED_DAYS[idx] ? Colors.primary : theme.surface2,
+                  backgroundColor: weeklyDays[idx] ? Colors.primary : theme.surface2,
                   borderWidth: 1,
-                  borderColor: COMPLETED_DAYS[idx] ? Colors.primary : theme.border,
+                  borderColor: weeklyDays[idx] ? Colors.primary : theme.border,
                   alignItems: 'center', justifyContent: 'center',
                   marginBottom: 6,
-                  ...(COMPLETED_DAYS[idx] ? {
+                  ...(weeklyDays[idx] ? {
                     shadowColor: Colors.primary,
                     shadowOffset: { width: 0, height: 0 },
                     shadowOpacity: 0.5,
@@ -271,7 +350,7 @@ export default function MilestonesScreen() {
                 }}>
                   <Text style={{
                     fontFamily: 'Inter_700Bold', fontSize: 13,
-                    color: COMPLETED_DAYS[idx] ? '#fff' : theme.textTertiary,
+                    color: weeklyDays[idx] ? '#fff' : theme.textTertiary,
                   }}>
                     {letter}
                   </Text>
@@ -283,11 +362,9 @@ export default function MilestonesScreen() {
 
         {/* Active Challenges */}
         <View style={{ marginTop: 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 17, color: theme.text, letterSpacing: -0.3 }}>
-              Active Challenges
-            </Text>
-          </View>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 17, color: theme.text, letterSpacing: -0.3, marginBottom: 14 }}>
+            Today's Challenges
+          </Text>
 
           {CHALLENGES.map((ch, idx) => (
             <View
@@ -335,62 +412,36 @@ export default function MilestonesScreen() {
               </Text>
             </View>
           ))}
+        </View>
 
-          <TouchableOpacity style={{
-            borderWidth: 1, borderColor: theme.border, borderRadius: 14,
-            paddingVertical: 15, alignItems: 'center', marginTop: 4,
+        {/* Weight Logging CTA */}
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/stats')}
+          style={{
+            backgroundColor: theme.surface, borderRadius: 16, padding: 18, marginTop: 8,
+            borderWidth: 1, borderColor: theme.border,
+            flexDirection: 'row', alignItems: 'center',
+          }}
+        >
+          <View style={{
+            width: 40, height: 40, borderRadius: 12,
+            backgroundColor: 'rgba(16,185,129,0.12)',
+            alignItems: 'center', justifyContent: 'center', marginRight: 14,
           }}>
-            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: theme.textSecondary }}>
-              Browse All Challenges
+            <ScaleIcon color="#10b981" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: theme.text }}>
+              Log Today's Weight
             </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Trophy Room */}
-        <View style={{ marginTop: 24 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <View>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 9, color: theme.textTertiary, letterSpacing: 1.8, textTransform: 'uppercase' }}>
-                Trophy Room
-              </Text>
-              <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 17, color: theme.text, marginTop: 2 }}>
-                64 Trophies
-              </Text>
-            </View>
-            <TouchableOpacity>
-              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: Colors.primary }}>
-                View All
-              </Text>
-            </TouchableOpacity>
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+              Track your progress over time
+            </Text>
           </View>
-
-          <View style={{ flexDirection: 'row' }}>
-            {TROPHIES.map((trophy, idx) => (
-              <View
-                key={idx}
-                style={{
-                  flex: 1, backgroundColor: trophy.bg, borderRadius: 16, padding: 16,
-                  alignItems: 'center', borderWidth: 1, borderColor: trophy.border,
-                  marginRight: idx < 2 ? 10 : 0,
-                }}
-              >
-                <View style={{
-                  width: 44, height: 44, borderRadius: 22,
-                  backgroundColor: `${trophy.border}25`,
-                  alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-                }}>
-                  {trophy.icon}
-                </View>
-                <Text style={{
-                  fontFamily: 'Inter_600SemiBold', fontSize: 11, color: '#fff',
-                  textAlign: 'center', lineHeight: 16,
-                }}>
-                  {trophy.title}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+            <Path d="M9 18l6-6-6-6" stroke={theme.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

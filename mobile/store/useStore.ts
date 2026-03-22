@@ -20,6 +20,7 @@ export interface User {
   dailyFatGoal: number;
   dailyWaterGoalMl: number;
   streak: number;
+  createdAt?: string;
 }
 
 export interface FoodLogItem {
@@ -49,6 +50,7 @@ interface AppState {
   accessToken: string | null;
   todayLog: DayLog | null;
   waterToday: number;
+  isHydrated: boolean;
 
   setUser: (user: User) => void;
   setTokens: (access: string, refresh: string) => void;
@@ -64,6 +66,7 @@ export const useStore = create<AppState>((set) => ({
   accessToken: USE_MOCK ? 'mock-token' : null,
   todayLog: USE_MOCK ? (MOCK_DAY_LOG as unknown as DayLog) : null,
   waterToday: USE_MOCK ? MOCK_WATER.totalMl : 0,
+  isHydrated: USE_MOCK,
 
   setUser: (user) => {
     set({ user });
@@ -88,15 +91,21 @@ export const useStore = create<AppState>((set) => ({
 
   loadFromStorage: async () => {
     if (USE_MOCK) {
-      // Already pre-populated in initial state
+      set({ isHydrated: true });
       return;
     }
-    const [userJson, accessToken] = await Promise.all([
-      AsyncStorage.getItem('user'),
-      AsyncStorage.getItem('accessToken'),
-    ]);
-    if (userJson && accessToken) {
-      set({ user: JSON.parse(userJson), accessToken });
+    try {
+      const [userJson, accessToken] = await Promise.all([
+        AsyncStorage.getItem('user'),
+        AsyncStorage.getItem('accessToken'),
+      ]);
+      if (userJson && accessToken) {
+        set({ user: JSON.parse(userJson), accessToken, isHydrated: true });
+      } else {
+        set({ isHydrated: true });
+      }
+    } catch {
+      set({ isHydrated: true });
     }
   },
 }));

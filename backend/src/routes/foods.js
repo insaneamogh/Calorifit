@@ -11,16 +11,22 @@ router.get('/search', auth, async (req, res) => {
     const { q = '' } = req.query;
     const foods = await prisma.food.findMany({
       where: {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { brandName: { contains: q, mode: 'insensitive' } },
-        ],
-        OR: [
-          { isCustom: false },
-          { isCustom: true, createdBy: req.userId },
+        AND: [
+          {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' } },
+              { brandName: { contains: q, mode: 'insensitive' } },
+            ],
+          },
+          {
+            OR: [
+              { isCustom: false },
+              { isCustom: true, createdBy: req.userId },
+            ],
+          },
         ],
       },
-      take: 20,
+      take: 30,
       orderBy: { name: 'asc' },
     });
     res.json(foods);

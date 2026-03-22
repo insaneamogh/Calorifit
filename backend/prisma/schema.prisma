@@ -32,6 +32,8 @@ model User {
   foodLogs      FoodLog[]
   waterLogs     WaterLog[]
   weightEntries WeightEntry[]
+  exercises     Exercise[]    @relation("UserExercises")
+  pantryItems   PantryItem[]  @relation("UserPantry")
 }
 
 model Food {
@@ -51,6 +53,7 @@ model Food {
   tags        String[] @default([])
 
   logItems    FoodLogItem[]
+  pantryItems PantryItem[]
 }
 
 model FoodLog {
@@ -103,4 +106,34 @@ model WeightEntry {
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Exercise {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation("UserExercises", fields: [userId], references: [id])
+  name           String
+  category       String   // "chest", "back", "legs", "shoulders", "arms", "cardio", "core"
+  sets           Int?
+  reps           Int?
+  weight         Float?   // kg
+  duration       Int?     // minutes
+  caloriesBurned Float?
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+model PantryItem {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation("UserPantry", fields: [userId], references: [id])
+  foodId     String?
+  food       Food?     @relation(fields: [foodId], references: [id])
+  name       String
+  quantity   Float     @default(1)
+  unit       String    @default("piece") // piece, g, kg, ml, L, cup
+  expiryDate DateTime?
+  category   String?   // "protein", "dairy", "grains", "vegetables", "fruits", "snacks", "condiments"
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
