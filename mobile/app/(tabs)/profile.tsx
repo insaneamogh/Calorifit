@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Alert, ActivityIndicator, Modal, Pressable, Switch,
@@ -6,9 +6,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useStore } from '../../store/useStore';
-import { userAPI, progressAPI } from '../../services/api';
+import { userAPI, progressAPI, bodyCompAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -135,6 +135,18 @@ export default function ProfileScreen() {
   const [tempCarb, setTempCarb] = useState('');
   const [tempFat, setTempFat] = useState('');
   const [tempGoalWeight, setTempGoalWeight] = useState('');
+  const [bodyComp, setBodyComp] = useState<any>(null);
+  const [bodyCompModal, setBodyCompModal] = useState(false);
+  const [bcFields, setBcFields] = useState({
+    weightKg: '', bmi: '', bodyFatPct: '', fatFreeBodyKg: '', subcutaneousFat: '',
+    visceralFat: '', bodyWaterPct: '', skeletalMusclePct: '', muscleMassKg: '',
+    boneMassKg: '', proteinPct: '', bmr: '', metabolicAge: '',
+  });
+  const [savingBc, setSavingBc] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    bodyCompAPI.getLatest().then(res => setBodyComp(res.data)).catch(() => {});
+  }, []));
 
   if (!user) {
     return (
@@ -503,6 +515,178 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Body Composition */}
+        <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              Body Composition
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (bodyComp) {
+                  setBcFields({
+                    weightKg: String(bodyComp.weightKg || ''), bmi: String(bodyComp.bmi || ''),
+                    bodyFatPct: String(bodyComp.bodyFatPct || ''), fatFreeBodyKg: String(bodyComp.fatFreeBodyKg || ''),
+                    subcutaneousFat: String(bodyComp.subcutaneousFat || ''), visceralFat: String(bodyComp.visceralFat || ''),
+                    bodyWaterPct: String(bodyComp.bodyWaterPct || ''), skeletalMusclePct: String(bodyComp.skeletalMusclePct || ''),
+                    muscleMassKg: String(bodyComp.muscleMassKg || ''), boneMassKg: String(bodyComp.boneMassKg || ''),
+                    proteinPct: String(bodyComp.proteinPct || ''), bmr: String(bodyComp.bmr || ''),
+                    metabolicAge: String(bodyComp.metabolicAge || ''),
+                  });
+                } else {
+                  setBcFields({ weightKg: String(user.currentWeight), bmi: '', bodyFatPct: '', fatFreeBodyKg: '', subcutaneousFat: '', visceralFat: '', bodyWaterPct: '', skeletalMusclePct: '', muscleMassKg: '', boneMassKg: '', proteinPct: '', bmr: '', metabolicAge: '' });
+                }
+                setBodyCompModal(true);
+              }}
+              style={{ backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: theme.border }}
+            >
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.primary }}>{bodyComp ? 'Update' : '+ Add'}</Text>
+            </TouchableOpacity>
+          </View>
+          {bodyComp ? (
+            <View style={{ backgroundColor: theme.surface, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: theme.border, padding: 16 }}>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: theme.textTertiary, marginBottom: 12 }}>
+                {new Date(bodyComp.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                {bodyComp.source !== 'manual' ? ` via ${bodyComp.source}` : ''}
+              </Text>
+              {/* Row 1 */}
+              <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                {[
+                  { label: 'Weight', value: bodyComp.weightKg, unit: 'kg', color: Colors.primary },
+                  { label: 'BMI', value: bodyComp.bmi, unit: '', color: '#f59e0b' },
+                  { label: 'Body Fat', value: bodyComp.bodyFatPct, unit: '%', color: '#f97316' },
+                ].map((m) => (
+                  <View key={m.label} style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: m.color, letterSpacing: -0.5 }}>
+                      {m.value != null ? `${m.value}` : '--'}<Text style={{ fontSize: 11, fontFamily: 'Inter_500Medium' }}>{m.unit}</Text>
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>{m.label}</Text>
+                  </View>
+                ))}
+              </View>
+              {/* Row 2 */}
+              <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                {[
+                  { label: 'Fat-Free', value: bodyComp.fatFreeBodyKg, unit: 'kg', color: Colors.tertiary },
+                  { label: 'Subcut. Fat', value: bodyComp.subcutaneousFat, unit: '%', color: '#f97316' },
+                  { label: 'Visceral Fat', value: bodyComp.visceralFat, unit: '', color: '#ef4444' },
+                ].map((m) => (
+                  <View key={m.label} style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: m.color, letterSpacing: -0.5 }}>
+                      {m.value != null ? `${m.value}` : '--'}<Text style={{ fontSize: 11, fontFamily: 'Inter_500Medium' }}>{m.unit}</Text>
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>{m.label}</Text>
+                  </View>
+                ))}
+              </View>
+              {/* Row 3 */}
+              <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                {[
+                  { label: 'Body Water', value: bodyComp.bodyWaterPct, unit: '%', color: '#3b82f6' },
+                  { label: 'Skel. Muscle', value: bodyComp.skeletalMusclePct, unit: '%', color: '#f59e0b' },
+                  { label: 'Muscle Mass', value: bodyComp.muscleMassKg, unit: 'kg', color: Colors.tertiary },
+                ].map((m) => (
+                  <View key={m.label} style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: m.color, letterSpacing: -0.5 }}>
+                      {m.value != null ? `${m.value}` : '--'}<Text style={{ fontSize: 11, fontFamily: 'Inter_500Medium' }}>{m.unit}</Text>
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>{m.label}</Text>
+                  </View>
+                ))}
+              </View>
+              {/* Row 4 */}
+              <View style={{ flexDirection: 'row' }}>
+                {[
+                  { label: 'Bone Mass', value: bodyComp.boneMassKg, unit: 'kg', color: '#a855f7' },
+                  { label: 'Protein', value: bodyComp.proteinPct, unit: '%', color: '#f97316' },
+                  { label: 'BMR', value: bodyComp.bmr, unit: 'kcal', color: Colors.primary },
+                ].map((m) => (
+                  <View key={m.label} style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 18, color: m.color, letterSpacing: -0.5 }}>
+                      {m.value != null ? `${m.value}` : '--'}<Text style={{ fontSize: 11, fontFamily: 'Inter_500Medium' }}>{m.unit}</Text>
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>{m.label}</Text>
+                  </View>
+                ))}
+              </View>
+              {bodyComp.metabolicAge != null && (
+                <View style={{ marginTop: 12, alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.border }}>
+                  <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color: Colors.tertiary }}>{bodyComp.metabolicAge}</Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: theme.textTertiary, marginTop: 2 }}>Metabolic Age</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                setBcFields({ weightKg: String(user.currentWeight), bmi: '', bodyFatPct: '', fatFreeBodyKg: '', subcutaneousFat: '', visceralFat: '', bodyWaterPct: '', skeletalMusclePct: '', muscleMassKg: '', boneMassKg: '', proteinPct: '', bmr: '', metabolicAge: '' });
+                setBodyCompModal(true);
+              }}
+              style={{ backgroundColor: theme.surface, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: theme.border, borderStyle: 'dashed' }}
+            >
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: theme.textTertiary }}>No body composition data</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: theme.textTertiary, marginTop: 4 }}>Tap to add from your smart scale</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Health Sync */}
+        <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
+            Health Integrations
+          </Text>
+          <View style={{ backgroundColor: theme.surface, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+            {[
+              { label: 'Apple Health', desc: 'Sync weight, workouts & body metrics', icon: 'heart', color: '#ff3b30' },
+              { label: 'Google Fit', desc: 'Sync activity & body composition', icon: 'activity', color: '#4285f4' },
+              { label: 'FitIndex', desc: 'Import smart scale measurements', icon: 'scale', color: '#00c853' },
+              { label: 'Fitbit', desc: 'Sync steps, heart rate & weight', icon: 'watch', color: '#00b0b9' },
+            ].map((s, i) => (
+              <TouchableOpacity
+                key={s.label}
+                onPress={() => Alert.alert('Coming Soon', `${s.label} integration requires a development build. This feature will be available when the app is published to the App Store / Play Store.\n\nFor now, you can manually enter your body composition data above.`)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', padding: 16,
+                  borderBottomWidth: i < 3 ? 1 : 0, borderBottomColor: theme.border,
+                }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: `${s.color}15`, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                  {s.icon === 'heart' && (
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                      <Path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke={s.color} strokeWidth={1.8} />
+                    </Svg>
+                  )}
+                  {s.icon === 'activity' && (
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                      <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={s.color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                  )}
+                  {s.icon === 'scale' && (
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                      <Rect x={3} y={3} width={18} height={18} rx={3} stroke={s.color} strokeWidth={1.8} />
+                      <Circle cx={12} cy={12} r={4} stroke={s.color} strokeWidth={1.8} />
+                    </Svg>
+                  )}
+                  {s.icon === 'watch' && (
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                      <Circle cx={12} cy={12} r={7} stroke={s.color} strokeWidth={1.8} />
+                      <Path d="M12 9v3l1.5 1.5" stroke={s.color} strokeWidth={1.8} strokeLinecap="round" />
+                      <Path d="M16.51 17.35l-.35 3.83a2 2 0 01-2 1.82H9.83a2 2 0 01-2-1.82l-.35-3.83M7.49 6.65l.35-3.83A2 2 0 019.83 1h4.35a2 2 0 012 1.82l.35 3.83" stroke={s.color} strokeWidth={1.8} />
+                    </Svg>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.text, fontSize: 14 }}>{s.label}</Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 12, marginTop: 2 }}>{s.desc}</Text>
+                </View>
+                <View style={{ backgroundColor: theme.surface2, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: theme.border }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: theme.textTertiary }}>SOON</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Logout */}
         <TouchableOpacity
           onPress={handleLogout}
@@ -746,6 +930,86 @@ export default function ProfileScreen() {
               style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
             >
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Body Composition Modal */}
+      <Modal visible={bodyCompModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }} onPress={() => setBodyCompModal(false)} />
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48, maxHeight: '80%' }}>
+            <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: theme.text, marginBottom: 6 }}>Body Composition</Text>
+            <Text style={{ fontFamily: 'Inter_400Regular', color: theme.textTertiary, fontSize: 13, marginBottom: 16 }}>Enter values from your smart scale (FitIndex, etc.)</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+              {[
+                { key: 'weightKg', label: 'Weight (kg)', required: true },
+                { key: 'bmi', label: 'BMI' },
+                { key: 'bodyFatPct', label: 'Body Fat (%)' },
+                { key: 'fatFreeBodyKg', label: 'Fat-Free Body (kg)' },
+                { key: 'subcutaneousFat', label: 'Subcutaneous Fat (%)' },
+                { key: 'visceralFat', label: 'Visceral Fat' },
+                { key: 'bodyWaterPct', label: 'Body Water (%)' },
+                { key: 'skeletalMusclePct', label: 'Skeletal Muscle (%)' },
+                { key: 'muscleMassKg', label: 'Muscle Mass (kg)' },
+                { key: 'boneMassKg', label: 'Bone Mass (kg)' },
+                { key: 'proteinPct', label: 'Protein (%)' },
+                { key: 'bmr', label: 'BMR (kcal)' },
+                { key: 'metabolicAge', label: 'Metabolic Age' },
+              ].map((field) => (
+                <View key={field.key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 13, color: theme.textSecondary }}>
+                    {field.label}{field.required ? ' *' : ''}
+                  </Text>
+                  <TextInput
+                    value={(bcFields as any)[field.key]}
+                    onChangeText={(v) => setBcFields(prev => ({ ...prev, [field.key]: v }))}
+                    keyboardType="decimal-pad"
+                    placeholder="--"
+                    placeholderTextColor={theme.textTertiary}
+                    style={{
+                      width: 90, padding: 10, borderRadius: 10, textAlign: 'center',
+                      backgroundColor: theme.surface2, borderWidth: 1, borderColor: theme.border,
+                      color: Colors.primary, fontFamily: 'Inter_700Bold', fontSize: 15,
+                    }}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              onPress={async () => {
+                const w = Number(bcFields.weightKg);
+                if (!bcFields.weightKg || isNaN(w) || w < 20 || w > 300) {
+                  Alert.alert('Invalid', 'Weight is required');
+                  return;
+                }
+                setSavingBc(true);
+                try {
+                  const d = new Date();
+                  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  const payload: any = { date: dateStr, weightKg: w, source: 'manual' };
+                  for (const [k, v] of Object.entries(bcFields)) {
+                    if (k === 'weightKg') continue;
+                    const num = Number(v);
+                    if (v && !isNaN(num)) payload[k] = num;
+                  }
+                  const res = await bodyCompAPI.add(payload);
+                  setBodyComp(res.data);
+                  setBodyCompModal(false);
+                  // Refresh user data since weight was updated
+                  const userRes = await userAPI.getMe();
+                  setUser(userRes.data);
+                  Alert.alert('Saved', 'Body composition data recorded.');
+                } catch (err: any) {
+                  Alert.alert('Error', err.response?.data?.error || 'Failed to save');
+                } finally {
+                  setSavingBc(false);
+                }
+              }}
+              style={{ backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 16 }}
+            >
+              {savingBc ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: 'Inter_700Bold', color: '#fff', fontSize: 16 }}>Save</Text>}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

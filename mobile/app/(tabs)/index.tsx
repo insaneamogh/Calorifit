@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path, Rect, G } from 'react-native-svg';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { logsAPI, waterAPI } from '../../services/api';
 import CalorieRing from '../../components/ui/CalorieRing';
@@ -13,7 +13,10 @@ import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
 import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 // Meal icon components (SVG-based, no emojis)
 function SunIcon({ color }: { color: string }) {
@@ -90,7 +93,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   const onRefresh = async () => {
     setRefreshing(true);

@@ -11,6 +11,7 @@ const waterRoutes = require('./routes/water');
 const progressRoutes = require('./routes/progress');
 const exerciseRoutes = require('./routes/exercises');
 const pantryRoutes = require('./routes/pantry');
+const bodyCompRoutes = require('./routes/bodycomp');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/water', waterRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/pantry', pantryRoutes);
+app.use('/api/body-composition', bodyCompRoutes);
 
 app.get('/', (req, res) => res.json({
   name: 'CalorieCalx API',

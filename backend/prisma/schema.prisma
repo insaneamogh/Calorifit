@@ -32,8 +32,9 @@ model User {
   foodLogs      FoodLog[]
   waterLogs     WaterLog[]
   weightEntries WeightEntry[]
-  exercises     Exercise[]    @relation("UserExercises")
-  pantryItems   PantryItem[]  @relation("UserPantry")
+  exercises     Exercise[]          @relation("UserExercises")
+  pantryItems   PantryItem[]        @relation("UserPantry")
+  bodyComps     BodyComposition[]   @relation("UserBodyComps")
 }
 
 model Food {
@@ -136,4 +137,28 @@ model PantryItem {
   category   String?   // "protein", "dairy", "grains", "vegetables", "fruits", "snacks", "condiments"
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+model BodyComposition {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation("UserBodyComps", fields: [userId], references: [id])
+  date             DateTime @db.Date
+  weightKg         Float
+  bmi              Float?
+  bodyFatPct       Float?   // Body fat percentage
+  fatFreeBodyKg    Float?   // Fat-free body weight
+  subcutaneousFat  Float?   // Subcutaneous fat percentage
+  visceralFat      Float?   // Visceral fat level (1-59)
+  bodyWaterPct     Float?   // Body water percentage
+  skeletalMusclePct Float?  // Skeletal muscle percentage
+  muscleMassKg     Float?   // Total muscle mass
+  boneMassKg       Float?   // Bone mass
+  proteinPct       Float?   // Body protein percentage
+  bmr              Float?   // Basal Metabolic Rate (kcal)
+  metabolicAge     Int?     // Metabolic age
+  source           String   @default("manual") // manual, fitindex, apple_health, google_fit, fitbit
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, date, source])
 }

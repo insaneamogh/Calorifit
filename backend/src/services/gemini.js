@@ -13,6 +13,7 @@ const FOOD_JSON_SCHEMA = `{
       "fat": number,
       "fiber": number,
       "glycemicIndex": number,
+      "shifaIndex": number,
       "tags": ["string"]
     }
   ],
@@ -47,6 +48,10 @@ Nutritional guidelines:
   * Whole grains (brown rice, oats, quinoa) = 40-60
   * White rice = 64-72, White bread = 70-85, Sugar/sweets = 65-100
   * Fruits: apple=38, banana=51, mango=56, dates=42
+- shifaIndex: compute as Math.round((caloriesPer100g * glycemicIndex) / (proteinPer100g + fiberPer100g)). Lower is better.
+  * First convert the portion values to per-100g: multiply each by (100 / estimatedGrams)
+  * If protein + fiber < 0.5, set shifaIndex to 999
+  * Ratings: 0=neutral (pure protein/fat), 1-50=excellent, 51-150=good, 151-300=moderate, 301-500=fair, 500+=poor
 - tags: 2-3 relevant health tags like "High Protein", "Low Carb", "High Fiber", "Healthy Fat", "Complex Carbs", "Antioxidants"
 - confidence: "high" if food is clearly identifiable, "medium" if partially visible, "low" if unclear
 - notes: brief observation about the meal nutritional quality
@@ -100,6 +105,10 @@ Nutritional guidelines:
 - calories: accurate total for that portion
 - protein/carbs/fat/fiber: grams for that portion
 - glycemicIndex: scientifically accurate GI (0=pure protein/fat, low<55, medium 56-69, high≥70)
+- shifaIndex: compute as Math.round((caloriesPer100g * glycemicIndex) / (proteinPer100g + fiberPer100g)). Lower is better.
+  * First convert the portion values to per-100g: multiply each by (100 / estimatedGrams)
+  * If protein + fiber < 0.5, set shifaIndex to 999
+  * Ratings: 0=neutral (pure protein/fat), 1-50=excellent, 51-150=good, 151-300=moderate, 301-500=fair, 500+=poor
 - tags: 2-3 health tags ("High Protein", "Low Carb", "High Fiber", "Healthy Fat", "Complex Carbs", "Processed", "Whole Food")
 - confidence: "high" if standard food, "medium" if estimating, "low" if very unclear
 - notes: any important nutritional insight or assumption made

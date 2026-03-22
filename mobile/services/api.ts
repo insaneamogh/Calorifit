@@ -101,6 +101,13 @@ const realPantryAPI = {
   delete: (id: string) => api.delete(`/pantry/${id}`),
 };
 
+const realBodyCompAPI = {
+  getAll: (limit = 30) => api.get(`/body-composition?limit=${limit}`),
+  getLatest: () => api.get('/body-composition/latest'),
+  add: (data: any) => api.post('/body-composition', data),
+  delete: (id: string) => api.delete(`/body-composition/${id}`),
+};
+
 // Mock fallbacks for exercise and pantry (return empty arrays)
 const mockExerciseAPI = {
   getDay: (_date: string) => Promise.resolve({ data: [] }),
@@ -116,6 +123,13 @@ const mockPantryAPI = {
   delete: (_id: string) => Promise.resolve({ data: { success: true } }),
 };
 
+const mockBodyCompAPI = {
+  getAll: (_limit = 30) => Promise.resolve({ data: [] }),
+  getLatest: () => Promise.resolve({ data: null }),
+  add: (_data: any) => Promise.resolve({ data: {} }),
+  delete: (_id: string) => Promise.resolve({ data: { success: true } }),
+};
+
 // --- Export mock or real based on USE_MOCK flag ---
 export const authAPI   = USE_MOCK ? mockAuthAPI   : realAuthAPI;
 export const userAPI   = USE_MOCK ? mockUserAPI   : realUserAPI;
@@ -126,5 +140,6 @@ export const waterAPI  = USE_MOCK ? mockWaterAPI  : realWaterAPI;
 export const progressAPI = USE_MOCK ? mockProgressAPI : realProgressAPI;
 export const exerciseAPI = USE_MOCK ? mockExerciseAPI : realExerciseAPI;
 export const pantryAPI   = USE_MOCK ? mockPantryAPI   : realPantryAPI;
+export const bodyCompAPI = USE_MOCK ? mockBodyCompAPI  : realBodyCompAPI;
 
 export default api;

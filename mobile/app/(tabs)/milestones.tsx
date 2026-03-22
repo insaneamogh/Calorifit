@@ -8,7 +8,10 @@ import { useTheme } from '../../context/ThemeContext';
 import { useStore } from '../../store/useStore';
 import { progressAPI, logsAPI, waterAPI } from '../../services/api';
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 function BoltIcon({ color = '#fff', size = 20 }: { color?: string; size?: number }) {
   return (

@@ -26,7 +26,7 @@ export default function StatsScreen() {
         progressAPI.getStats(),
         progressAPI.getWeight(30),
         progressAPI.getCalories(period),
-        exerciseAPI.getDay(new Date().toISOString().split('T')[0]).catch(() => ({ data: [] })),
+        exerciseAPI.getDay((() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()).catch(() => ({ data: [] })),
       ]);
       setStats(statsRes.data);
       setWeightData(weightRes.data || []);

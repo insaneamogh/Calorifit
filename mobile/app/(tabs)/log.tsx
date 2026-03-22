@@ -5,14 +5,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { logsAPI, foodsAPI, aiAPI } from '../../services/api';
 import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
 import { getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const SERVING_UNITS = [
   { label: '100g', grams: 100 },
@@ -175,7 +178,8 @@ export default function LogScreen() {
     }
   }, []);
 
-  useEffect(() => { loadLog(); }, []);
+  // Reload log every time the tab gains focus (e.g. after returning from scan)
+  useFocusEffect(useCallback(() => { loadLog(); }, [loadLog]));
 
   const onRefresh = async () => { setRefreshing(true); await loadLog(); setRefreshing(false); };
 

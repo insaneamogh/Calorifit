@@ -22,10 +22,13 @@ router.get('/me', auth, async (req, res) => {
 router.put('/me', auth, async (req, res) => {
   try {
     const { name, age, gender, heightCm, currentWeight, goalWeight, activityLevel, goal,
-      dailyWaterGoalMl } = req.body;
+      dailyWaterGoalMl, dailyCalGoal: customCalGoal, dailyProteinGoal, dailyCarbGoal, dailyFatGoal } = req.body;
 
     const current = await prisma.user.findUnique({ where: { id: req.userId } });
     if (!current) return res.status(404).json({ error: 'User not found' });
+
+    // Only recalculate TDEE/macros if body stats or goal changed
+    const bodyChanged = age || gender || heightCm || currentWeight || activityLevel || goal;
 
     const merged = {
       gender: gender ?? current.gender,
@@ -36,8 +39,24 @@ router.put('/me', auth, async (req, res) => {
       goal: goal ?? current.goal,
     };
 
-    const dailyCalGoal = calculateTDEE(merged);
-    const macros = calculateMacros(dailyCalGoal, merged.goal);
+    let calGoal = current.dailyCalGoal;
+    let protGoal = current.dailyProteinGoal;
+    let carbGoal = current.dailyCarbGoal;
+    let fatGoal = current.dailyFatGoal;
+
+    if (bodyChanged) {
+      calGoal = calculateTDEE(merged);
+      const macros = calculateMacros(calGoal, merged.goal);
+      protGoal = macros.protein;
+      carbGoal = macros.carbs;
+      fatGoal = macros.fat;
+    }
+
+    // Custom macro overrides take priority
+    if (customCalGoal != null) calGoal = customCalGoal;
+    if (dailyProteinGoal != null) protGoal = dailyProteinGoal;
+    if (dailyCarbGoal != null) carbGoal = dailyCarbGoal;
+    if (dailyFatGoal != null) fatGoal = dailyFatGoal;
 
     const updates = {
       ...(name && { name }),
@@ -49,10 +68,10 @@ router.put('/me', auth, async (req, res) => {
       ...(activityLevel && { activityLevel }),
       ...(goal && { goal }),
       ...(dailyWaterGoalMl && { dailyWaterGoalMl }),
-      dailyCalGoal,
-      dailyProteinGoal: macros.protein,
-      dailyCarbGoal: macros.carbs,
-      dailyFatGoal: macros.fat,
+      dailyCalGoal: calGoal,
+      dailyProteinGoal: protGoal,
+      dailyCarbGoal: carbGoal,
+      dailyFatGoal: fatGoal,
     };
 
     const user = await prisma.user.update({ where: { id: req.userId }, data: updates });

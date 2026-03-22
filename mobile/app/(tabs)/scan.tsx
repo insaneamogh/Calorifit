@@ -13,7 +13,10 @@ import { Colors } from '../../constants/colors';
 import { useTheme } from '../../context/ThemeContext';
 import { computeShifaFromScan, computeMealShifa, getShifaRating, getShifaColor, getShifaLabel, getShifaBgColor } from '../../utils/shifa';
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 interface FoodResult {
   name: string;
